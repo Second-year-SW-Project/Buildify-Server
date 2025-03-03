@@ -1,0 +1,240 @@
+import generateOtp from "../utils/generateOtp.js";
+import User from "../model/userModel.js";
+import jwt from 'jsonwebtoken';
+import sendEmail from "../utils/email.js";
+import {catchAsync} from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
+
+const signToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, { 
+        expiresIn: process.env.JWT_EXPIRES_IN 
+    });
+};
+
+const createSendToken = (user, statusCode, res, message) => {
+    const token = signToken(user._id);
+
+    const cookieOptions = {
+        expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 7) * 24 * 60 * 60 * 1000),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'Lax',
+    };
+
+    res.cookie('token', token, cookieOptions);
+
+    user.password = undefined;
+    user.passwordConfirm = undefined;
+    user.otp = undefined;
+
+    res.status(statusCode).json({
+        status: 'success',
+        message,
+        token,
+        data: { user },
+    });
+};
+
+export const signup = catchAsync(async (req, res, next) => {
+    const { email, password, passwordConfirm,name } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return next(new AppError("Email already registered", 400));
+
+    const otp = generateOtp();
+    const otpExpires = Date.now() + 24 * 60 * 60 * 1000; // Fixed expiration time
+
+    const newUser = await User.create({
+        name,
+        email,
+        password,
+        passwordConfirm,
+        otp,
+        otpExpires,
+    });
+
+    try {
+        await sendEmail({
+            email: newUser.email,
+            subject: "OTP for Email Verification",
+            html: `<h1>Your OTP is: ${otp}</h1>`,
+        });
+
+        createSendToken(newUser, 200, res, "Registration successful");
+    } catch (error) {
+        await User.findByIdAndDelete(newUser.id);
+        return next(new AppError("There is an error in sending this email. Try again", 500));
+    }
+});
+
+
+export const verifyAccount = catchAsync(async(req, res, next)=> {
+
+    const {otp} = req.body;
+
+    if(!otp){
+        return next(new AppError("Otp is missing", 400 ));
+    }
+
+    const user= req.user;
+    if(user.otp !== otp){
+        return next(new AppError("Invalid otp" , 400));
+    }
+
+    if(Date.now() > user.otpExpires){
+        return next(new AppError("Otp has expired please request a new otp", 400))
+    }
+
+    user.isVerified = true;
+    user.otp= undefined;
+    user.otpExpires= undefined;
+
+    await user.save({validateBeforeSave: false});
+
+    createSendToken(user, 200, res, "Email has been verified");
+
+})
+
+export const resendOtp = catchAsync(async(req,res,next)=> {
+    const {email} = req.user;
+    if(!email){
+        return next(new AppError("Email is required to resend otp", 400));
+
+    }
+
+    const user= await User.findOne({email});
+    if(!user){
+        return next(new AppError("User not found", 400));
+
+    }
+
+    if(user.isVerified){
+        return next(new AppError("This account is already verified", 400));
+
+    }
+
+    const newOtp = generateOtp();
+    user.otp= newOtp;
+    user.otpExpires= Date.now() + 24* 60 * 60 * 1000;
+
+    await user.save({validateBeforeSave : false});
+
+    try{
+        await sendEmail({
+            email: user.email,
+            subject: "Resend otp for emsil verification",
+            html: `<h1>Your new otp is : ${newOtp}</h1>`
+        });
+
+        res.status(200).json({
+            status: 'success',
+            message: 'A new otp sent to your email'
+        });
+
+    }catch(error){
+        user.otp= undefined;
+        user.otpExpires = undefined;
+        await user.save({validateBeforeSave: false});
+        return next(new AppError("There is a error in sending email please try again", 500));
+
+    }
+});
+
+export const login = catchAsync(async(req, res, next) => {
+    
+    const {email,password} = req.body;
+    if(!email || ! password){
+        return next(new AppError("Email and password should provide", 400));
+
+    }
+
+    const user = await User.findOne({email}).select('+password');
+
+    //compare the password
+if(!user || !(await user.correctPassword(password,user.password))){
+    return next(new AppError("Incorrect email or password", 401));
+
+}
+
+createSendToken(user,200, res, "Logged in successfully")
+
+
+});
+
+export const logout = catchAsync(async(req, res, next)=>{
+    res.cookie("token", "loggedout",{
+        expires: new Date(Date.now() + 10 * 1000 ),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production'
+});
+
+res.status(200).json({
+    status: 'success',
+    message: 'logged out successfully'
+})
+});
+
+export const forgetPassword = catchAsync(async(req, res, next) => {
+    const {email} = req.body;
+    const user = await User.findOne({email});
+    if(!user){
+        return next(new AppError("Email is not found", 404));
+    }
+
+    const otp = generateOtp();
+    user.resetPasswordOTP = otp;
+    user.resetPasswordOTPExpires = Date.now() + 300000;
+
+    await user.save({validateBeforeSave: false});
+
+
+    try{
+        await sendEmail({
+            email: user.email,
+            subject: "Otp for reset Password",
+            html : `<h1>Otp for reset password is ${otp} </h1>`
+        });
+
+        res.status(200).json({
+            status: "success",
+            mesage: 'Password reset otp sent successfully'
+        })
+
+    }catch(error){
+        user.resetPasswordOTP= undefined;
+        user.resetPasswordOTPExpires = undefined;
+        await user.save({validateBeforeSave: false});
+
+        return next(new AppError("There is an error in sending password reset otp"));
+
+    }
+});
+
+export const resetPassword = catchAsync(async(req, res, next) => {
+    const{email, otp, password, passwordConfirm} = req.body;
+
+    const user = await User.findOne({
+        email : email,
+        resetPasswordOTP: otp,
+        resetPasswordOTPExpires: { $gt : Date.now()}
+    });
+    console.log("Request Body - Email:", email);
+    console.log("Request Body - OTP:", otp);
+    console.log("Current Time:", Date.now());
+
+    if (!user) {
+        console.log("No user found with this email or OTP has expired/incorrect");
+        return next(new AppError("No user found or OTP is invalid", 400));
+    }
+
+    user.password= password;
+    user.passwordConfirm = passwordConfirm;
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordOTPExpires = undefined;
+
+    await user.save();
+
+    createSendToken(user, 200, res, "Password reset successfully");
+
+})
+
