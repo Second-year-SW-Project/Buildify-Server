@@ -22,7 +22,7 @@ router.get(
   (req, res) => {
     const { token, user } = req.user;
     res.redirect(
-      `http://localhost:5173/auth/dashboard?token=${token}&name=${encodeURIComponent(
+      `http://localhost:5173/?token=${token}&name=${encodeURIComponent(
         user.name
       )}&email=${user.email}`
     );
