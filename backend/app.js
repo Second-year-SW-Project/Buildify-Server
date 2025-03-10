@@ -54,11 +54,6 @@ app.use(passport.session());
 // Configure Passport strategies
 configurePassport(passport);
 
-
-app.get('/', (req, res) => {
-    res.send('Welcome to the Buildify backend!');
-});
-
 // **🚀 Register Auth Routes Before Error Handler**
 app.use('/auth', router);
 
