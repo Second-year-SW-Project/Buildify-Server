@@ -15,6 +15,11 @@ router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
 
 
+
+
+
+
+//managing users
 router.get("/user", protect, async (req, res) => {
     try {
       const user = await User.findById(req.user._id);

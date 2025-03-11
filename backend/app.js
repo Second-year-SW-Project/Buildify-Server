@@ -7,16 +7,11 @@ import dotenv from "dotenv";
 import session from "express-session";
 import passport from "passport";
 import express from 'express';
-import morgan from 'morgan';
-import mongoose from 'mongoose';
 import MongoStore from 'connect-mongo';
-import User from './model/userModel.js';
-import complaint from "./model/Complaint.js"
 import crouter from './routes/complaintRoutes.js';
-// Load environment variables
+
 dotenv.config({ path: "./config.env" });
 
-// Passport config
 import configurePassport from './config/passport.js';
 import router from './routes/auth.js';
 
