@@ -49,7 +49,6 @@ app.use(passport.session());
 // Configure Passport strategies
 configurePassport(passport);
 
-// **🚀 Register Auth Routes Before Error Handler**
 app.use('/auth', router);
 
 // User API routes
