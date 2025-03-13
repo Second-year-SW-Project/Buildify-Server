@@ -13,6 +13,7 @@ import MongoStore from 'connect-mongo';
 import User from './model/userModel.js';
 import complaint from "./model/Complaint.js"
 import crouter from './routes/complaintRoutes.js';
+import RMArouter from './routes/RMARoutes.js';
 // Load environment variables
 dotenv.config({ path: "./config.env" });
 
@@ -62,6 +63,7 @@ app.use('/api/v1/users', userRouters);
 
 //complaint routes
 app.use('/api', crouter);
+app.use("/api/rma", RMArouter);
 
 // Handle Unmatched Routes
 app.all('*', (req, res, next) => {
