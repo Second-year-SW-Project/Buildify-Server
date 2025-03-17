@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema(
     firstName: { type: String},
   lastName: { type: String},
   address: { type: String },
+  profilePicture: { type: String, default: "" }, 
     password: {
       type: String,
       //required: [true, "Please provide a password"],

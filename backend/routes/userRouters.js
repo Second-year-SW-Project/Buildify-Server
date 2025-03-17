@@ -133,12 +133,13 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.put('/update-profile', authenticateJWT, async (req, res) => {
+router.post('/update-profile', isAuthenticated, async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, firstName, lastName, address } = req.body;
 
-    // Log the request body to ensure it's coming through correctly
-    console.log('Request body:', req.body);
+    console.log('Request body:', req.body); // Debugging log (remove in production)
+
+    
 
     // Check if the user is authenticated
     if (!req.user) {
@@ -146,15 +147,19 @@ router.put('/update-profile', authenticateJWT, async (req, res) => {
     }
 
     // Find and update the user in the database
-    const updatedUser = await User.findByIdAndUpdate(req.user._id, { name, email }, { new: true });
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { name, email, firstName, lastName, address },
+      { new: true, runValidators: true }
+    );
 
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.status(200).json(updatedUser);
+    res.status(200).json({ message: 'Profile updated successfully', data: { user: updatedUser } });
   } catch (error) {
-    console.error('Error updating profile:', error);  // Log error for debugging
+    console.error('Error updating profile:', error); // Log error for debugging
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 });
