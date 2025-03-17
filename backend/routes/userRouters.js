@@ -3,8 +3,6 @@ import { forgetPassword, login, logout, resendOtp, resetPassword, signup, verify
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import {protect} from "../middleware/authMiddleware.js";
-import authenticateJWT from '../middleware/authenticateJWT.js'; // Adjust path if necessary
-
 const router= express.Router();
 
 router.post('/signup', signup);
@@ -133,13 +131,17 @@ router.get("/", async (req, res) => {
   }
 });
 
+
 router.post('/update-profile', isAuthenticated, async (req, res) => {
   try {
     const { name, email, firstName, lastName, address } = req.body;
 
     console.log('Request body:', req.body); // Debugging log (remove in production)
 
-    
+    // Validate request body
+    if (!name || !email || !firstName || !lastName || !address) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
 
     // Check if the user is authenticated
     if (!req.user) {
@@ -163,7 +165,6 @@ router.post('/update-profile', isAuthenticated, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 });
-
 
 
 export default router;
