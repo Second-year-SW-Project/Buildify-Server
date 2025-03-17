@@ -1,10 +1,6 @@
 import express from "express";
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import User from "../model/userModel.js";
 import dotenv from "dotenv";
-import {protect} from "../middleware/authMiddleware.js"
-import mongoose from "mongoose";
 
 const router = express.Router();
 dotenv.config({path: "./config.env"});

@@ -3,6 +3,7 @@ import { forgetPassword, login, logout, resendOtp, resetPassword, signup, verify
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import {protect} from "../middleware/authMiddleware.js";
+import authenticateJWT from '../middleware/authenticateJWT.js'; // Adjust path if necessary
 
 const router= express.Router();
 
@@ -131,5 +132,33 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: "Error fetching users" });
   }
 });
+
+router.put('/update-profile', authenticateJWT, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+
+    // Log the request body to ensure it's coming through correctly
+    console.log('Request body:', req.body);
+
+    // Check if the user is authenticated
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Find and update the user in the database
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, { name, email }, { new: true });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error('Error updating profile:', error);  // Log error for debugging
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+
 
 export default router;
