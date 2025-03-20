@@ -238,3 +238,51 @@ export const resetPassword = catchAsync(async(req, res, next) => {
 
 })
 
+export const updateProfile = async (req, res) => {
+    try {
+      // Allowed fields validation
+      const allowedUpdates = ['name', 'email', 'firstName', 'lastName', 'address', 'profilePicture'];
+      const updates = Object.keys(req.body);
+      
+      const invalidFields = updates.filter(field => !allowedUpdates.includes(field));
+      if (invalidFields.length > 0) {
+        return res.status(400).json({
+          error: `Invalid fields: ${invalidFields.join(', ')}`,
+          allowedFields: allowedUpdates
+        });
+      }
+  
+      // Schema validation
+      const user = await User.findByIdAndUpdate(
+        req.user._id,
+        req.body,
+        { new: true, runValidators: true, context: 'query' }
+      ).select('-password -refreshToken');
+  
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      res.status(200).json({
+        status: 'success',
+        data: { user }
+      });
+  
+    } catch (error) {
+      // Enhanced error handling
+      const errors = {};
+      
+      if (error.name === 'ValidationError') {
+        Object.keys(error.errors).forEach(field => {
+          errors[field] = error.errors[field].message;
+        });
+      }
+  
+      res.status(400).json({
+        status: 'fail',
+        error: error.message,
+        fields: Object.keys(errors),
+        detailedErrors: errors
+      });
+    }
+  };

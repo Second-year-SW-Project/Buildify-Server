@@ -1,5 +1,5 @@
 import express from "express";
-import { forgetPassword, login, logout, resendOtp, resetPassword, signup, verifyAccount } from "../controller/authController.js";
+import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount } from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import {protect} from "../middleware/authMiddleware.js";
@@ -12,6 +12,7 @@ router.post('/login',login);
 router.post('/logout', logout);
 router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
+router.post('/update-profile',isAuthenticated, updateProfile);
 
 
 
@@ -132,39 +133,6 @@ router.get("/", async (req, res) => {
 });
 
 
-router.post('/update-profile', isAuthenticated, async (req, res) => {
-  try {
-    const { name, email, firstName, lastName, address } = req.body;
-
-    console.log('Request body:', req.body); // Debugging log (remove in production)
-
-    // Validate request body
-    if (!name || !email || !firstName || !lastName || !address) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    // Check if the user is authenticated
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    // Find and update the user in the database
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
-      { name, email, firstName, lastName, address },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.status(200).json({ message: 'Profile updated successfully', data: { user: updatedUser } });
-  } catch (error) {
-    console.error('Error updating profile:', error); // Log error for debugging
-    res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  }
-});
 
 
 export default router;
