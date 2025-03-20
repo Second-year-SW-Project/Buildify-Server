@@ -1,5 +1,6 @@
 import express from 'express';
 import RMA from '../model/RMAModel.js';
+import User from '../model/userModel.js';
 
 const RMArouter = express.Router();
 
@@ -44,43 +45,50 @@ RMArouter.get("/user/:userId", async (req, res) => {
     }
 });
 
-// Get RMA requests for Admin (with filtering)
-RMArouter.get("/admin/requests", async (req, res) => {
-  const { userName, email, status } = req.query;
 
-  const query = {};
-  if (userName) query["userId.name"] = userName;
-  if (email) query["userId.email"] = email;
-  if (status) query.status = status;
-
+// Get RMA requests with filtering
+RMArouter.get('/admin/requests', async (req, res) => {
   try {
-    const rmaRequests = await RMA.find(query).populate("userId", "name email");
-    req.json(rmaRequests);
+    const { orderId, status } = req.query;
+    const query = {};
+    
+    if (orderId) query.orderId = orderId;
+    if (status) query.status = status;
+
+    const requests = await RMA.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json(requests);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Admin RMA Error:', error);
+    res.status(500).json([]); // Return empty array on error
   }
 });
 
-// Admin response to RMA request
-RMArouter.put("/admin/respond/:id", async (req, res) => {
-  const { status, response } = req.body;
-  const rmaId = req.params.id;
-
+// Update RMA response
+RMArouter.put('/admin/respond/:id', async (req, res) => {
   try {
-    const rmaRequest =await RMA.findById(rmaId);
-    if (!rmaRequest) {
-      return res.status(404).json({ error: "RMA request not found" });
-    }
-
-    rmaRequest.status = status || "Resolved";
-    rmaRequest.response = response;
-    await rmaRequest.save();
-
-    res.json({ message: "Response added to RMA request" });
+    const updatedRequest = await RMA.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: req.body.status,
+        response: req.body.response,
+        updatedAt: Date.now()
+      },
+      { new: true }
+    );
+    
+    res.status(200).json(updatedRequest);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Response Error:', error);
+    res.status(500).json({ error: 'Update failed' });
   }
 });
+
+
+
+
 
 export default RMArouter;
   

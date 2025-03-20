@@ -18,6 +18,8 @@ const rmaSchema = new Schema({
         type: String, 
         required: true 
     },
+    response: {String,
+        },
     message: { 
         type: String, 
         required: true 
