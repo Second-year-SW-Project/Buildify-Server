@@ -13,6 +13,7 @@ import MongoStore from 'connect-mongo';
 import User from './model/userModel.js';
 import complaint from "./model/Complaint.js"
 import crouter from './routes/complaintRoutes.js';
+import prouter from './routes/productRoutes.js';
 // Load environment variables
 dotenv.config({ path: "./config.env" });
 
@@ -27,7 +28,7 @@ app.use(cookieParser());
 
 app.use(
     cors({
-        origin: 'http://localhost:5173', 
+        origin: 'http://localhost:5173',
         credentials: true,
     })
 );
@@ -40,8 +41,8 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-      mongoUrl: process.env.DB,  // Ensure this is correctly set
-      collectionName: "sessions",  // Optional: specify a session collection name
+        mongoUrl: process.env.DB,  // Ensure this is correctly set
+        collectionName: "sessions",  // Optional: specify a session collection name
     }),
 }));
 
@@ -62,6 +63,9 @@ app.use('/api/v1/users', userRouters);
 
 //complaint routes
 app.use('/api', crouter);
+
+//product routes
+app.use('/api/product', prouter);
 
 // Handle Unmatched Routes
 app.all('*', (req, res, next) => {
