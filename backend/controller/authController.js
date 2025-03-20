@@ -238,3 +238,136 @@ export const resetPassword = catchAsync(async(req, res, next) => {
 
 })
 
+export const updateProfile = async (req, res) => {
+    try {
+      // Allowed fields validation
+      const allowedUpdates = ['name', 'email', 'firstName', 'lastName', 'address', 'profilePicture'];
+      const updates = Object.keys(req.body);
+      
+      const invalidFields = updates.filter(field => !allowedUpdates.includes(field));
+      if (invalidFields.length > 0) {
+        return res.status(400).json({
+          error: `Invalid fields: ${invalidFields.join(', ')}`,
+          allowedFields: allowedUpdates
+        });
+      }
+  
+      // Schema validation
+      const user = await User.findByIdAndUpdate(
+        req.user._id,
+        req.body,
+        { new: true, runValidators: true, context: 'query' }
+      ).select('-password -refreshToken');
+  
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      res.status(200).json({
+        status: 'success',
+        data: { user }
+      });
+  
+    } catch (error) {
+      // Enhanced error handling
+      const errors = {};
+      
+      if (error.name === 'ValidationError') {
+        Object.keys(error.errors).forEach(field => {
+          errors[field] = error.errors[field].message;
+        });
+      }
+  
+      res.status(400).json({
+        status: 'fail',
+        error: error.message,
+        fields: Object.keys(errors),
+        detailedErrors: errors
+      });
+    }
+  };
+
+
+  // controllers/userController.js
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
+import bcrypt from 'bcrypt';
+
+// Change Password
+export const changePassword = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    
+    const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+
+    if (req.body.newPassword !== req.body.confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    user.password = req.body.newPassword;
+    await user.save();
+    
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 2FA Setup
+export const setupTwoFactor = async (req, res) => {
+  try {
+    const secret = speakeasy.generateSecret({ length: 20 });
+    const otpauthUrl = speakeasy.otpauthURL({
+      secret: secret.ascii,
+      label: `YourApp (${req.user.email})`,
+      issuer: 'YourApp'
+    });
+
+    const qrCode = await QRCode.toDataURL(otpauthUrl);
+
+    res.json({
+      secret: secret.base32,
+      qrCode
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 2FA Verification
+export const verifyTwoFactor = async (req, res) => {
+  try {
+    const verified = speakeasy.totp.verify({
+      secret: req.body.secret,
+      encoding: 'base32',
+      token: req.body.code
+    });
+
+    if (!verified) return res.status(400).json({ message: 'Invalid code' });
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { twoFactorSecret: req.body.secret, twoFactorEnabled: true },
+      { new: true }
+    );
+
+    res.json({ message: '2FA enabled successfully', user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Disable 2FA
+export const disableTwoFactor = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { twoFactorSecret: null, twoFactorEnabled: false }
+    );
+
+    res.json({ message: '2FA disabled successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

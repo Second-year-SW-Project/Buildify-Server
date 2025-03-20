@@ -1,80 +1,93 @@
 import express from "express";
-import { forgetPassword, login, logout, resendOtp, resetPassword, signup, verifyAccount } from "../controller/authController.js";
+import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,setupTwoFactor,verifyTwoFactor,disableTwoFactor } from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
-import {protect} from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 
-const router= express.Router();
+const router = express.Router();
 
 router.post('/signup', signup);
 router.post('/verify', isAuthenticated, verifyAccount)
-router.post('/resend-otp',isAuthenticated,resendOtp);
-router.post('/login',login);
+router.post('/resend-otp', isAuthenticated, resendOtp);
+router.post('/login', login);
 router.post('/logout', logout);
 router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
+router.post('/update-profile',isAuthenticated, updateProfile);
+// Password routes
+router.post('/change-password', isAuthenticated, changePassword);
+
+// 2FA routes
+router.get('/2fa/setup', isAuthenticated, setupTwoFactor);
+router.post('/2fa/verify', isAuthenticated, verifyTwoFactor);
+router.post('/2fa/disable', isAuthenticated, disableTwoFactor);
 
 
+
+
+
+
+//managing users
 router.get("/user", protect, async (req, res) => {
-    try {
-      const user = await User.findById(req.user._id);
-      res.json(user);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching user" });
-    }
-  });
+  try {
+    const user = await User.findById(req.user._id);
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching user" });
+  }
+});
 
 
-  //get all users 
+//get all users 
 
-  router.get("/", async (req, res) => {
-    try {
-      const users = await User.find().select("-password");
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ message: "Server Error" });
-    }
-  });
-
-
-  //update user
-  router.put("/:id", async (req, res) => {
-    try {
-      const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-      res.json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ message: "Error updating user" });
-    }
-  });
-  
-  // Delete User
-  router.delete("/:id", async (req, res) => {
-    try {
-      await User.findByIdAndDelete(req.params.id);
-      res.json({ message: "User deleted" });
-    } catch (error) {
-      res.status(500).json({ message: "Error deleting user" });
-    }
-  });
-
-  //update or change user
-  router.put("/:id", async (req, res) => {
-    try {
-      const { name, email, Role } = req.body;
-      const updatedUser = await User.findByIdAndUpdate(
-        req.params.id,
-        { name, email, Role },
-        { new: true }
-      );
-      res.json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ message: "Error updating user" });
-    }
-  });
-  
+router.get("/", async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 
 
-  import bcrypt from "bcryptjs";
+//update user
+router.put("/:id", async (req, res) => {
+  try {
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating user" });
+  }
+});
+
+// Delete User
+router.delete("/:id", async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting user" });
+  }
+});
+
+//update or change user
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, email, Role } = req.body;
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { name, email, Role },
+      { new: true }
+    );
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating user" });
+  }
+});
+
+
+
+import bcrypt from "bcryptjs";
 
 // Create a new user
 router.post("/", async (req, res) => {
@@ -126,5 +139,8 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: "Error fetching users" });
   }
 });
+
+
+
 
 export default router;

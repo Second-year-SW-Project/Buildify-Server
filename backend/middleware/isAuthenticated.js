@@ -18,9 +18,9 @@ const isAuthenticated = catchAsync(async (req, res, next) => {
         return next(new AppError("The user belonging to this token does not exist", 401));
     }
 
-    req.user = currentUser; // Fix: Changed req.User to req.user
+    req.user = currentUser;
 
-    console.log("Authenticated User:", req.user); // Debugging line
+    console.log("Authenticated User:", req.user);
 
     next();
 });

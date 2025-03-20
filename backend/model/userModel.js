@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       validate: [validator.isEmail, "Please provide a valid email"],
     },
+    firstName: { type: String},
+  lastName: { type: String},
+  address: { type: String },
+  profilePicture: { type: String, default: "" }, 
     password: {
       type: String,
       //required: [true, "Please provide a password"],
@@ -27,7 +31,7 @@ const userSchema = new mongoose.Schema(
     },
     passwordConfirm: {
       type: String,
-     // required: [true, "Please confirm your password"],
+      // required: [true, "Please confirm your password"],
       select: false, // Ensures this field is not saved in the database
       validate: {
         validator: function (el) {
@@ -66,8 +70,17 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
     },
     Role: {
-       type: String, enum: ["admin", "user"], default: "user" ,
+      type: String, enum: ["admin", "user"], default: "user",
     },
+    // ... existing fields
+  twoFactorSecret: {
+    type: String,
+    select: false
+  },
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false
+  },
   },
   {
     timestamps: true,
