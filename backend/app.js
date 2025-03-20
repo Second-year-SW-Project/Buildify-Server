@@ -9,7 +9,10 @@ import passport from "passport";
 import express from 'express';
 import MongoStore from 'connect-mongo';
 import crouter from './routes/complaintRoutes.js';
+import RMArouter from './routes/RMARoutes.js';
+import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
+
 // Load environment variables
 dotenv.config({ path: "./config.env" });
 
@@ -58,6 +61,10 @@ app.use('/api/v1/users', userRouters);
 
 //complaint routes
 app.use('/api', crouter);
+app.use("/api/rma", RMArouter);
+
+//review routes
+
 
 //product routes
 app.use('/api/product', prouter);
