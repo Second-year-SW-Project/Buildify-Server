@@ -1,5 +1,5 @@
 import express from "express";
-import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount } from "../controller/authController.js";
+import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,setupTwoFactor,verifyTwoFactor,disableTwoFactor } from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import {protect} from "../middleware/authMiddleware.js";
@@ -13,6 +13,13 @@ router.post('/logout', logout);
 router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
 router.post('/update-profile',isAuthenticated, updateProfile);
+// Password routes
+router.post('/change-password', isAuthenticated, changePassword);
+
+// 2FA routes
+router.get('/2fa/setup', isAuthenticated, setupTwoFactor);
+router.post('/2fa/verify', isAuthenticated, verifyTwoFactor);
+router.post('/2fa/disable', isAuthenticated, disableTwoFactor);
 
 
 

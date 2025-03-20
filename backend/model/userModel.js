@@ -72,6 +72,15 @@ const userSchema = new mongoose.Schema(
     Role: {
        type: String, enum: ["admin", "user"], default: "user" ,
     },
+    // ... existing fields
+  twoFactorSecret: {
+    type: String,
+    select: false
+  },
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false
+  },
   },
   {
     timestamps: true,

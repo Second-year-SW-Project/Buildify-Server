@@ -286,3 +286,88 @@ export const updateProfile = async (req, res) => {
       });
     }
   };
+
+
+  // controllers/userController.js
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
+import bcrypt from 'bcrypt';
+
+// Change Password
+export const changePassword = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    
+    const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+
+    if (req.body.newPassword !== req.body.confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    user.password = req.body.newPassword;
+    await user.save();
+    
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 2FA Setup
+export const setupTwoFactor = async (req, res) => {
+  try {
+    const secret = speakeasy.generateSecret({ length: 20 });
+    const otpauthUrl = speakeasy.otpauthURL({
+      secret: secret.ascii,
+      label: `YourApp (${req.user.email})`,
+      issuer: 'YourApp'
+    });
+
+    const qrCode = await QRCode.toDataURL(otpauthUrl);
+
+    res.json({
+      secret: secret.base32,
+      qrCode
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 2FA Verification
+export const verifyTwoFactor = async (req, res) => {
+  try {
+    const verified = speakeasy.totp.verify({
+      secret: req.body.secret,
+      encoding: 'base32',
+      token: req.body.code
+    });
+
+    if (!verified) return res.status(400).json({ message: 'Invalid code' });
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { twoFactorSecret: req.body.secret, twoFactorEnabled: true },
+      { new: true }
+    );
+
+    res.json({ message: '2FA enabled successfully', user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Disable 2FA
+export const disableTwoFactor = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { twoFactorSecret: null, twoFactorEnabled: false }
+    );
+
+    res.json({ message: '2FA disabled successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
