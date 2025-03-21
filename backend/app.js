@@ -31,7 +31,7 @@ app.use(
     })
 );
 
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "1000kb" }));
 
 
 // Session Middleware (Must be Before Passport)
