@@ -19,19 +19,17 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       validate: [validator.isEmail, "Please provide a valid email"],
     },
-    firstName: { type: String},
-  lastName: { type: String},
-  address: { type: String },
-  profilePicture: { type: String, default: "" }, 
+    firstName: { type: String },
+    lastName: { type: String },
+    address: { type: String },
+    profilePicture: { type: String, default: "" },
     password: {
       type: String,
-      //required: [true, "Please provide a password"],
       minlength: 8,
       select: false, // Ensures password is not returned in queries
     },
     passwordConfirm: {
       type: String,
-      // required: [true, "Please confirm your password"],
       select: false, // Ensures this field is not saved in the database
       validate: {
         validator: function (el) {
@@ -41,9 +39,9 @@ const userSchema = new mongoose.Schema(
       },
     },
     googleId: {
-      type: String,  // Store googleId when the user logs in via Google
+      type: String, 
       unique: true,
-      sparse: true,  // Allows both Google and regular login for a user
+      sparse: true, // Allows both Google and regular login for a user
     },
     isVerified: {
       type: Boolean,
@@ -70,17 +68,26 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
     },
     Role: {
-      type: String, enum: ["admin", "user"], default: "user",
+      type: String,
+      enum: ["admin", "user"],
+      default: "user",
     },
-    // ... existing fields
-  twoFactorSecret: {
-    type: String,
-    select: false
-  },
-  twoFactorEnabled: {
-    type: Boolean,
-    default: false
-  },
+    twoFactorSecret: {
+      type: String,
+      select: false,
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    passwordChangedAt: {
+      type: Date,
+      select: false, // Track when password was last changed
+    },
+    passwordHistory: [{
+      hash: String,
+      changedAt: Date
+    }],
   },
   {
     timestamps: true,
@@ -91,14 +98,43 @@ const userSchema = new mongoose.Schema(
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
+  console.log('Before Hashing:', this.password); // Log before hashing
   this.password = await bcrypt.hash(this.password, 12);
+  console.log('After Hashing:', this.password); // Log after hashing
+
   this.passwordConfirm = undefined; // Remove confirmation field
   next();
 });
 
+
 // 🔹 Check password validity
-userSchema.methods.correctPassword = async function (password, userPassword) {
+userSchema.methods.correctPassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);  // 'this.password' should be the hashed password
+};
+
+
+
+// 🔹 Method to compare new password with password history
+userSchema.methods.hasUsedPassword = async function (newPassword) {
+  const results = await Promise.allSettled(
+    this.passwordHistory.map(async (oldPassword) => bcrypt.compare(newPassword, oldPassword.hash))
+  );
+  return results.some((result) => result.status === "fulfilled" && result.value);
+};
+
+// 🔹 Check password validity
+userSchema.methods.comparePassword = async function (password, userPassword) {
   return await bcrypt.compare(password, userPassword);
+};
+
+
+// 🔹 Check if the password was changed after token issue
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
 };
 
 const User = mongoose.model("User", userSchema);
