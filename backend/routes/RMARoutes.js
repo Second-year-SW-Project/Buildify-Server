@@ -6,6 +6,7 @@ const RMArouter = express.Router();
 
 // Create RMA Request
 RMArouter.post("/", async (req, res) => {
+  console.log("Received RMA request:", req.body);
     try {
       const { userId, subject, orderId, reason, message } = req.body;
       
