@@ -366,6 +366,7 @@ export const generate2FASecret = async (req, res) => {
     const secret = speakeasy.generateSecret({ length: 20 });
     user.twoFASecret = secret.base32;
     await user.save();
+    console.log("User's 2FA secret:", user.twoFASecret);  // Log the secret
 
     // Shorten the label by truncating the user's email
     const label = `MyApp:${user.email.substring(0, 10)}`; // Truncate email to 10 chars

@@ -72,11 +72,10 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "user"],
       default: "user",
     },
-    twoFactorSecret: {
-      type: String,
-      select: false,
+    twoFASecret: {
+      type: String
     },
-    twoFactorEnabled: {
+    is2FAEnabled: {
       type: Boolean,
       default: false,
     },
