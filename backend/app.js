@@ -64,7 +64,7 @@ app.use('/api', crouter);
 app.use("/api/rma", RMArouter);
 
 //review routes
-
+app.use("/api/review", reviewrouter);
 
 //product routes
 app.use('/api/product', prouter);

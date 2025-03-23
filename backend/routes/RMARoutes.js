@@ -26,7 +26,7 @@ RMArouter.post("/", async (req, res) => {
 // Get a specific RMA request
 RMArouter.get("/:id", async (req, res) => {
     try {
-      const rmaRequest = await RMA.findById(req.params.id).populate("userId", "name email");
+      const rmaRequest = await RMA.findById(req.params.id);
       if (!rmaRequest) {
         return res.status(404).json({ error: "RMA request not found" });
       }
