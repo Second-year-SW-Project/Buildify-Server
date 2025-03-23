@@ -404,12 +404,21 @@ export const enable2FA = async (req, res) => {
       return res.status(400).json({ message: '2FA is already enabled' });
     }
 
+    const testToken = speakeasy.totp({
+      secret: user.twoFASecret,
+      encoding: 'base32'
+    });
+    console.log("Expected Token:", testToken);
+    
+
     // Verify the provided token with the stored secret
     const verified = speakeasy.totp.verify({
       secret: user.twoFASecret,
       encoding: 'base32',
-      token
+      token,
+      window: 1 // Allows a small time drift
     });
+    
 
     if (!verified) {
       return res.status(400).json({ message: 'Invalid token' });
