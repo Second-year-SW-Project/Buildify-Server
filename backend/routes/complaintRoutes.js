@@ -2,16 +2,16 @@ import { Router } from 'express';
 import Complaint from '../model/Complaint.js';
 
 const crouter = Router();
-
 // Submit complaint (for users)
 crouter.post('/complaints/submit', async (req, res) => {
-  const { title, description, userId } = req.body;
+  const { title, description, userId, complaintType } = req.body;
 
   try {
     const complaint = new Complaint({
       title,
       description,
       user: userId,  // Make sure userId is coming from the authenticated user's session
+      complaintType, // Add complaint type
     });
     await complaint.save();
     res.json({ message: 'Complaint submitted successfully!' });
@@ -32,9 +32,10 @@ crouter.get('/complaints/user/:userId', async (req, res) => {
   }
 });
 
+
 // Get complaints (for admin to filter and view all complaints)
 crouter.get('/complaints/admin', async (req, res) => {
-  const { name, email, status } = req.query;
+  const { name, email, status, complaintType } = req.query;
 
   const query = {};
 
@@ -42,6 +43,7 @@ crouter.get('/complaints/admin', async (req, res) => {
   if (name) query['user.name'] = name;
   if (email) query['user.email'] = email;
   if (status) query.status = status;
+  if (complaintType) query.complaintType = complaintType; // Filter by complaint type
 
   try {
     const complaints = await Complaint.find(query).populate('user');
@@ -72,5 +74,6 @@ crouter.put('/complaints/admin/respond/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 export default crouter;
