@@ -25,6 +25,10 @@ const ReviewSchema = new Schema({
     comment: {
         type: String,
         required: true
+    },
+    adminResponse: {  
+        type: String,
+        default: null
     }
 }, { timestamps: true });
 
