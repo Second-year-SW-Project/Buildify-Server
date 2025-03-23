@@ -91,6 +91,7 @@ router.put("/:id", async (req, res) => {
 
 
 import bcrypt from "bcryptjs";
+import authenticateJWT from "../middleware/authenticateJWT.js";
 
 // Create a new user
 router.post("/", async (req, res) => {

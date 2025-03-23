@@ -364,16 +364,21 @@ export const generate2FASecret = async (req, res) => {
   try {
     const user = req.user;
     const secret = speakeasy.generateSecret({ length: 20 });
-    
     user.twoFASecret = secret.base32;
     await user.save();
 
-    // Generate QR code URL
+    // Shorten the label by truncating the user's email
+    const label = `MyApp:${user.email.substring(0, 10)}`; // Truncate email to 10 chars
+
+    // Generate the OTP Auth URL with the shortened label
     const otpauthUrl = speakeasy.otpauthURL({
       secret: secret.base32,
-      label: `MyApp:${user.email}`,
+      label: label,
       issuer: 'MyApp'
     });
+
+    // Check the length of the URL
+    console.log('OTPAUTH URL Length:', otpauthUrl.length);
 
     QRCode.toDataURL(otpauthUrl, (err, dataUrl) => {
       if (err) throw err;
@@ -384,11 +389,21 @@ export const generate2FASecret = async (req, res) => {
   }
 };
 
+
 export const enable2FA = async (req, res) => {
   try {
     const { token } = req.body;
     const user = req.user;
 
+    console.log("Received token:", token);  // Log token
+    console.log("User's 2FA secret:", user.twoFASecret);  // Log the secret
+
+    // Check if 2FA is already enabled
+    if (user.is2FAEnabled) {
+      return res.status(400).json({ message: '2FA is already enabled' });
+    }
+
+    // Verify the provided token with the stored secret
     const verified = speakeasy.totp.verify({
       secret: user.twoFASecret,
       encoding: 'base32',
@@ -399,13 +414,18 @@ export const enable2FA = async (req, res) => {
       return res.status(400).json({ message: 'Invalid token' });
     }
 
+    // Enable 2FA for the user
     user.is2FAEnabled = true;
     await user.save();
+
     res.json({ message: '2FA enabled successfully' });
   } catch (err) {
+    console.error('Error enabling 2FA:', err);  // Log the error
     res.status(500).json({ message: '2FA enable failed' });
   }
 };
+
+
 
 export const disable2FA = async (req, res) => {
   try {
