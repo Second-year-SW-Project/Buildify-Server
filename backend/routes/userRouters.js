@@ -1,8 +1,12 @@
 import express from "express";
-import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,setupTwoFactor,verifyTwoFactor,disableTwoFactor } from "../controller/authController.js";
+import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,
+  generate2FASecret,
+  enable2FA,
+  disable2FA } from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { authenticateForPassword } from "../middleware/changepasswordMiddleware.js";
 
 const router = express.Router();
 
@@ -14,14 +18,13 @@ router.post('/logout', logout);
 router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
 router.post('/update-profile',isAuthenticated, updateProfile);
-// Password routes
-router.post('/change-password', isAuthenticated, changePassword);
+
+router.post('/change-password', authenticateForPassword, changePassword);
 
 // 2FA routes
-router.get('/2fa/setup', isAuthenticated, setupTwoFactor);
-router.post('/2fa/verify', isAuthenticated, verifyTwoFactor);
-router.post('/2fa/disable', isAuthenticated, disableTwoFactor);
-
+router.post('/2fa/generate',isAuthenticated, generate2FASecret);
+router.post('/2fa/enable', isAuthenticated, enable2FA);
+router.post('/2fa/disable', isAuthenticated, disable2FA);
 
 
 
@@ -88,6 +91,7 @@ router.put("/:id", async (req, res) => {
 
 
 import bcrypt from "bcryptjs";
+import authenticateJWT from "../middleware/authenticateJWT.js";
 
 // Create a new user
 router.post("/", async (req, res) => {

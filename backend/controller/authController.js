@@ -288,86 +288,179 @@ export const updateProfile = async (req, res) => {
   };
 
 
-  // controllers/userController.js
+import bcrypt  from 'bcryptjs';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
-import bcrypt from 'bcrypt';
 
-// Change Password
 export const changePassword = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    
-    const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    console.log('Request Body:', req.body); // Log request body to verify
 
-    if (req.body.newPassword !== req.body.confirmPassword) {
-      return res.status(400).json({ message: 'Passwords do not match' });
+    // Validate the required fields
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: "All fields are required" });
     }
 
-    user.password = req.body.newPassword;
+    // Ensure new and confirm passwords match
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "New password and confirm password do not match" });
+    }
+
+    // Check if the new password is strong enough (optional)
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+
+    // Find the user in the database
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Log the stored password for debugging
+    console.log('User Stored Password:', user.password); 
+
+    // Check if the current password is correct using comparePassword method
+    const isMatch = await user.correctPassword(currentPassword);
+    console.log('Password Match:', isMatch); // Log whether passwords match or not
+
+    if (!isMatch) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    // Check if the new password was used previously
+    const usedPassword = await user.hasUsedPassword(newPassword);
+    if (usedPassword) {
+      return res.status(400).json({ error: "You have used this password previously. Please choose a new one." });
+    }
+
+    // Update the password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    // Handle any errors
+    console.error('Error changing password:', error); // Log error for debugging
+    res.status(500).json({
+      status: 'fail',
+      error: error.message
+    });
+  }
+};
+
+
+
+
+
+
+
+export const generate2FASecret = async (req, res) => {
+  try {
+    const user = req.user;
+    
+    // Generate the secret
+    const secret = speakeasy.generateSecret({ length: 20 });
+
+    // Ensure the correct secret is assigned
+    user.twoFASecret = secret.base32;
+    await user.save(); // Save user with the correct secret
+
+    console.log("Generated 2FA Secret (to be saved):", secret.base32);
+    console.log("Stored 2FA Secret in DB:", user.twoFASecret);
+
+    // Ensure the secret is correctly retrieved
+    const retrievedUser = await User.findById(user._id);
+    console.log("Retrieved Secret After Save:", retrievedUser.twoFASecret);
+
+    // Generate OTP Auth URL
+    const otpauthUrl = speakeasy.otpauthURL({
+      secret: secret.base32,
+      label: `MyApp:${user.email.substring(0, 10)}`, // Shortened label
+      issuer: 'MyApp'
+    });
+
+    // Check the length of the URL
+    console.log('OTPAUTH URL Length:', otpauthUrl.length);
+
+    // Generate QR code
+    QRCode.toDataURL(otpauthUrl, (err, dataUrl) => {
+      if (err) {
+        console.error("QR Code Generation Error:", err);
+        return res.status(500).json({ message: 'Failed to generate QR code' });
+      }
+      res.json({ qr: dataUrl });
+    });
+
+  } catch (err) {
+    console.error("Error generating 2FA secret:", err);
+    res.status(500).json({ message: 'Failed to generate 2FA secret' });
+  }
+};
+
+
+
+export const enable2FA = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const user = await User.findById(req.user._id); // Ensure fresh data from DB
+
+    console.log("Received Token:", token);
+    console.log("Stored 2FA Secret in DB:", user.twoFASecret);
+
+    if (user.is2FAEnabled) {
+      return res.status(400).json({ message: '2FA is already enabled' });
+    }
+
+    // Generate expected token
+    const expectedToken = speakeasy.totp({
+      secret: user.twoFASecret.trim(), // Ensure trimming of spaces
+      encoding: 'base32'
+    });
+    console.log("Expected Token:", expectedToken);
+
+    // Verify provided token
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFASecret.trim(),
+      encoding: 'base32',
+      token,
+      window: 2
+    });
+
+    if (!verified) {
+      return res.status(400).json({ message: 'Invalid token' });
+    }
+
+    // Enable 2FA
+    user.is2FAEnabled = true;
+    await user.save();
+
+    res.json({ message: '2FA enabled successfully' });
+
+  } catch (err) {
+    console.error('Error enabling 2FA:', err);
+    res.status(500).json({ message: '2FA enable failed' });
+  }
+};
+
+
+
+
+export const disable2FA = async (req, res) => {
+  try {
+    const user = req.user;
+    
+    user.is2FAEnabled = false;
+    user.twoFASecret = undefined;
     await user.save();
     
-    res.json({ message: 'Password changed successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// 2FA Setup
-export const setupTwoFactor = async (req, res) => {
-  try {
-    const secret = speakeasy.generateSecret({ length: 20 });
-    const otpauthUrl = speakeasy.otpauthURL({
-      secret: secret.ascii,
-      label: `YourApp (${req.user.email})`,
-      issuer: 'YourApp'
-    });
-
-    const qrCode = await QRCode.toDataURL(otpauthUrl);
-
-    res.json({
-      secret: secret.base32,
-      qrCode
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// 2FA Verification
-export const verifyTwoFactor = async (req, res) => {
-  try {
-    const verified = speakeasy.totp.verify({
-      secret: req.body.secret,
-      encoding: 'base32',
-      token: req.body.code
-    });
-
-    if (!verified) return res.status(400).json({ message: 'Invalid code' });
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { twoFactorSecret: req.body.secret, twoFactorEnabled: true },
-      { new: true }
-    );
-
-    res.json({ message: '2FA enabled successfully', user });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Disable 2FA
-export const disableTwoFactor = async (req, res) => {
-  try {
-    await User.findByIdAndUpdate(
-      req.user._id,
-      { twoFactorSecret: null, twoFactorEnabled: false }
-    );
-
     res.json({ message: '2FA disabled successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: '2FA disable failed' });
   }
 };
