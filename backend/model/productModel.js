@@ -1,11 +1,14 @@
 import mongoose from 'mongoose';
 
 const productSchema = new mongoose.Schema({
-    type: { type: String, required: true },
+    type: { type: String, required: false },
     name: { type: String, required: true },
-    description: { type: String, required: false },
-    manufacturer: { type: String, required: true },
-    imgUrls: { type: Array, required: false }, //this should be true
+    description: { type: String, required: true },
+    manufacturer: { type: String, required: false },
+    imgUrls: [{
+        public_id: { type: String, required: false },
+        url: { type: String, required: false }
+    }],
     quantity: { type: Number, required: true },
     socket_type: { type: String, required: false },
     core_count: { type: Number, required: false },
@@ -15,6 +18,9 @@ const productSchema = new mongoose.Schema({
     tdp: { type: Number, required: false },
     integrated_graphics: { type: Boolean, required: false },
     includes_cooler: { type: Boolean, required: false },
+    memory_type: { type: String, required: false },
+    memory_speed: { type: Number, required: false },
+    memory_capacity: { type: Number, required: false },
     price: { type: Number, required: true },
 
 }, { timestamps: true });

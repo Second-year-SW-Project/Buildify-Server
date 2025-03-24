@@ -6,6 +6,7 @@ import passport from 'passport';
 import Authrouter from './routes/auth.js';
 import Complaint from './model/Complaint.js';
 import Product from './model/productModel.js';
+import connectCloudinary from './config/cloudinaryConfig.js';
 
 
 dotenv.config({ path: "./config.env" });
@@ -19,6 +20,7 @@ mongoose.connect(db).then(() => {
 });
 
 const port = process.env.PORT || 8000;
+connectCloudinary();
 
 app.listen(port, () => {
     console.log(`Server start at http://localhost:${port}`);
