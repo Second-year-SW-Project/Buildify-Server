@@ -363,77 +363,91 @@ export const changePassword = async (req, res) => {
 export const generate2FASecret = async (req, res) => {
   try {
     const user = req.user;
+    
+    // Generate the secret
     const secret = speakeasy.generateSecret({ length: 20 });
+
+    // Ensure the correct secret is assigned
     user.twoFASecret = secret.base32;
-    await user.save();
-    console.log("User's 2FA secret:", user.twoFASecret);  // Log the secret
+    await user.save(); // Save user with the correct secret
 
-    // Shorten the label by truncating the user's email
-    const label = `MyApp:${user.email.substring(0, 10)}`; // Truncate email to 10 chars
+    console.log("Generated 2FA Secret (to be saved):", secret.base32);
+    console.log("Stored 2FA Secret in DB:", user.twoFASecret);
 
-    // Generate the OTP Auth URL with the shortened label
+    // Ensure the secret is correctly retrieved
+    const retrievedUser = await User.findById(user._id);
+    console.log("Retrieved Secret After Save:", retrievedUser.twoFASecret);
+
+    // Generate OTP Auth URL
     const otpauthUrl = speakeasy.otpauthURL({
       secret: secret.base32,
-      label: label,
+      label: `MyApp:${user.email.substring(0, 10)}`, // Shortened label
       issuer: 'MyApp'
     });
 
     // Check the length of the URL
     console.log('OTPAUTH URL Length:', otpauthUrl.length);
 
+    // Generate QR code
     QRCode.toDataURL(otpauthUrl, (err, dataUrl) => {
-      if (err) throw err;
+      if (err) {
+        console.error("QR Code Generation Error:", err);
+        return res.status(500).json({ message: 'Failed to generate QR code' });
+      }
       res.json({ qr: dataUrl });
     });
+
   } catch (err) {
+    console.error("Error generating 2FA secret:", err);
     res.status(500).json({ message: 'Failed to generate 2FA secret' });
   }
 };
 
 
+
 export const enable2FA = async (req, res) => {
   try {
     const { token } = req.body;
-    const user = req.user;
+    const user = await User.findById(req.user._id); // Ensure fresh data from DB
 
-    console.log("Received token:", token);  // Log token
-    console.log("User's 2FA secret:", user.twoFASecret);  // Log the secret
+    console.log("Received Token:", token);
+    console.log("Stored 2FA Secret in DB:", user.twoFASecret);
 
-    // Check if 2FA is already enabled
     if (user.is2FAEnabled) {
       return res.status(400).json({ message: '2FA is already enabled' });
     }
 
-    const testToken = speakeasy.totp({
-      secret: user.twoFASecret,
+    // Generate expected token
+    const expectedToken = speakeasy.totp({
+      secret: user.twoFASecret.trim(), // Ensure trimming of spaces
       encoding: 'base32'
     });
-    console.log("Expected Token:", testToken);
-    
+    console.log("Expected Token:", expectedToken);
 
-    // Verify the provided token with the stored secret
+    // Verify provided token
     const verified = speakeasy.totp.verify({
-      secret: user.twoFASecret,
+      secret: user.twoFASecret.trim(),
       encoding: 'base32',
       token,
-      window: 1 // Allows a small time drift
+      window: 2
     });
-    
 
     if (!verified) {
       return res.status(400).json({ message: 'Invalid token' });
     }
 
-    // Enable 2FA for the user
+    // Enable 2FA
     user.is2FAEnabled = true;
     await user.save();
 
     res.json({ message: '2FA enabled successfully' });
+
   } catch (err) {
-    console.error('Error enabling 2FA:', err);  // Log the error
+    console.error('Error enabling 2FA:', err);
     res.status(500).json({ message: '2FA enable failed' });
   }
 };
+
 
 
 
