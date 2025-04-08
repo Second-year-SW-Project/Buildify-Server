@@ -11,7 +11,7 @@ import connectCloudinary from './config/cloudinaryConfig.js';
 
 dotenv.config({ path: "./config.env" });
 
-// application to database
+// Connect to DB
 const db = process.env.DB;
 mongoose.connect(db).then(() => {
     console.log("DB connection successful");
@@ -19,10 +19,12 @@ mongoose.connect(db).then(() => {
     console.log("DB connection error:", err);
 });
 
-const port = process.env.PORT || 8000;
+// Connect to Cloudinary
 connectCloudinary();
 
+// Start the server
+const port = process.env.PORT || 8000;
 app.listen(port, () => {
-    console.log(`Server start at http://localhost:${port}`);
+    console.log(`Server started at http://localhost:${port}`);
 });
 

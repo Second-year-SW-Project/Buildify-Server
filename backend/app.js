@@ -12,6 +12,8 @@ import crouter from './routes/complaintRoutes.js';
 import RMArouter from './routes/RMARoutes.js';
 import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
+import gameRouter from './routes/gameRouter.js'
+
 
 // Load environment variables
 dotenv.config({ path: "./config.env" });
@@ -68,6 +70,9 @@ app.use("/api/review", reviewrouter);
 
 //product routes
 app.use('/api/product', prouter);
+
+//game routes
+app.use('/api/game', gameRouter);
 
 // Handle Unmatched Routes
 app.all('*', (req, res, next) => {
