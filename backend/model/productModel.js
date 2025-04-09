@@ -1,3 +1,4 @@
+// productModel.js
 import mongoose from 'mongoose';
 
 const productSchema = new mongoose.Schema({
@@ -11,7 +12,7 @@ const productSchema = new mongoose.Schema({
     }],
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
-    //cpu
+    // CPU (for processors and prebuilds)
     socket_type: { type: String, required: false },
     core_count: { type: Number, required: false },
     thread_count: { type: Number, required: false },
@@ -20,11 +21,11 @@ const productSchema = new mongoose.Schema({
     tdp: { type: Number, required: false },
     integrated_graphics: { type: Boolean, required: false },
     includes_cooler: { type: Boolean, required: false },
-    //ram
+    // RAM (for RAM and prebuilds)
     memory_type: { type: String, required: false },
     memory_speed: { type: Number, required: false },
     memory_capacity: { type: Number, required: false },
-    //laptops
+    // Laptops
     display_size: { type: Number, required: false },
     resolution: { type: String, required: false },
     cpu: { type: String, required: false },
@@ -32,8 +33,20 @@ const productSchema = new mongoose.Schema({
     storage: { type: Number, required: false },
     laptop_type: { type: String, required: false },
     graphic_card: { type: String, required: false },
-    //prebuilds
+    // Prebuilds
     desktop_type: { type: String, required: false },
+    // New prebuild-specific fields (added in snake_case)
+    cpu_cores: { type: String, required: false },
+    cpu_threads: { type: String, required: false },
+    cpu_base_clock: { type: String, required: false },
+    cpu_boost_clock: { type: String, required: false },
+    gpu_series: { type: String, required: false },
+    gpu_vram_gb: { type: String, required: false },
+    gpu_boost_clock_mhz: { type: String, required: false },
+    gpu_cores: { type: String, required: false },
+    ram_size_gb: { type: String, required: false },
+    ram_speed_mhz: { type: String, required: false },
+    ram_type: { type: String, required: false },
 }, { timestamps: true });
 
 // Convert snake_case to camelCase for responses

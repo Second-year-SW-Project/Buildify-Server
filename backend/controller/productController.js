@@ -1,12 +1,14 @@
+// Controller file
 import mongoose from "mongoose";
 import Product from "../model/productModel.js";
 import { v2 as cloudinary } from "cloudinary";
 
-//clean the object by removing null values
+// Clean the object by removing null values
 const cleanObject = (obj) => {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""));
 };
 
+// Convert snake_case to camelCase (already defined elsewhere, reused here)
 const toCamelCase = (obj) => {
     if (!obj || typeof obj !== "object" || Array.isArray(obj)) return obj;
     return Object.fromEntries(
@@ -18,11 +20,10 @@ const toCamelCase = (obj) => {
 };
 
 export const createProduct = async (req, res) => {
-
-    let product = JSON.parse(req.body.product); // user must enter the body of the request
+    let product = JSON.parse(req.body.product); // Middleware has already converted to snake_case
     product = cleanObject(product);
 
-    // initialize the images
+    // Initialize the images
     const image1 = req.files.image1 && req.files.image1[0];
     const image2 = req.files.image2 && req.files.image2[0];
     const image3 = req.files.image3 && req.files.image3[0];
@@ -36,24 +37,32 @@ export const createProduct = async (req, res) => {
                 item.path,
                 { folder: "Products", resource_type: "image" },
             );
-
             return {
                 public_id: result.public_id,
                 url: result.secure_url,
-            }
+            };
         })
-    )
+    );
 
     const newProduct = new Product({
         ...product,
         img_urls: imagesUrl,
-
     });
 
-    console.log("New product", newProduct);
+    console.log("New product to save:", newProduct);
 
-    if (!product.type || !product.manufacturer || !product.name || !product.description || !product.quantity || !product.price || !product.img_urls) {
-        return res.status(400).json({ Success: false, message: "Please Enter all the required fields" });
+    // Basic validation
+    if (!product.type || !product.manufacturer || !product.name || !product.description ||
+        !product.quantity || !product.price || !imagesUrl.length) {
+        return res.status(400).json({ Success: false, message: "Please enter all required fields" });
+    }
+
+    // Optional: Add prebuild-specific validation
+    if (product.type === "prebuild" && (!product.cpu || !product.graphic_card || !product.desktop_type)) {
+        return res.status(400).json({
+            Success: false,
+            message: "Please enter required prebuild fields (cpu, graphic_card, desktop_type)"
+        });
     }
 
     try {
