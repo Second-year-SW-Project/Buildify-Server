@@ -28,44 +28,67 @@ reviewrouter.get("/:type/:itemId", async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   });
+  
 
-// Get all reviews for Admin with filtering
-reviewrouter.get("/admin", async (req, res) => {
+// Admin gets all reviews with optional filtering
+reviewrouter.get('/admin', async (req, res) => {
     try {
-      const { type, itemId, userName, minRating, maxRating } = req.query;
-  
-      const query = {};
-      if (type) query.type = type;
-      if (itemId) query.itemId = itemId;
-      if (minRating) query.rating = { $gte: Number(minRating) };
-      if (maxRating) query.rating = { ...query.rating, $lte: Number(maxRating) };
-  
-      const reviews = await Review.find(query).populate("userId", "name email");
-      res.json(reviews);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+        const { type, itemId, minRating, maxRating } = req.query;
+        
+        const query = {};
 
-// Admin response to a review 
-reviewrouter.put("/admin/respond/:id", async (req, res) => {
-    try {
-      const { response } = req.body;
-      const reviewId = req.params.id;
-  
-      const review = await Review.findById(reviewId);
-      if (!review) {
-        return res.status(404).json({ error: "Review not found" });
-      }
-  
-      review.adminResponse = response;
-      await review.save();
-  
-      res.json({ message: "Admin response added to review" });
+        if (type) query.type = type;
+        if (itemId) query.itemID = itemId;
+        if (minRating) query.rating = { $gte: Number(minRating) };
+        if (maxRating) {
+            query.rating = query.rating
+                ? { ...query.rating, $lte: Number(maxRating) }
+                : { $lte: Number(maxRating) };
+        }
+
+        const reviews = await Review.find(query)
+            .populate("userID", "name email") // Use 'userID' instead of 'userId'
+            .populate("itemID", "name description");
+        res.json(reviews);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+        console.error(error);
+        res.status(500).json({ error: error.message });
     }
-  });
+});
+
+// Admin responds to a review
+reviewrouter.post('/admin/respond/:reviewId', async (req, res) => {
+    try {
+        const { response } = req.body;
+        const { reviewId } = req.params;
+
+        if (!response) {
+            return res.status(400).json({ error: "Response is required" });
+        }
+
+        const review = await Review.findById(reviewId)
+            .populate("userID", "name email")
+            .populate("itemID", "name description");
+
+        if (!review) {
+            return res.status(404).json({ error: "Review not found" });
+        }
+
+        review.adminResponse = response;
+        await review.save();
+
+        res.json({ message: "Admin response added successfully", review });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+  
+
+  
+
 
 export default reviewrouter;
 
