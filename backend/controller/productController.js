@@ -167,3 +167,91 @@ export const deleteProduct = async (req, res) => {
     }
 }
 
+
+
+//search products
+
+export const getProductsBySearch = async (req, res) => {
+    try {
+        const query = req.query.query;
+        if (!query) {
+            return res.status(400).json({ message: "Query parameter is required" });
+        }
+
+        console.log("Search query:", query); // Debugging
+
+        const products = await Product.find({
+            $or: [
+                { name: { $regex: query, $options: "i" } },
+                { type: { $regex: query, $options: "i" } },
+                { description: { $regex: query, $options: "i" } }
+            ],
+        });
+
+        console.log("Found products:", products); // Debugging
+
+        const formattedProducts = products.map((product) => {
+            const productObj = product.toObject();
+            const camelCasedProduct = toCamelCase(productObj);
+
+            return {
+                ...camelCasedProduct,
+                _id:productObj._id,
+                
+         
+            }
+        });
+
+        res.json(formattedProducts);
+    } catch (error) {
+        console.error("Search error:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+// Get products by attribute
+export const getProductsByAttribute = async (req, res) => {
+    try {
+        const { attribute, value } = req.query;
+        const query = { [attribute]: value };
+        const products = await Product.find(query);
+        const formattedProducts = products.map((product) => {
+            const productObj = product.toObject();
+            const camelCasedProduct = toCamelCase(productObj);
+
+            return {
+                ...camelCasedProduct,
+                _id:productObj._id,
+                
+            }
+        });
+        res.status(200).json(formattedProducts);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+
+// Get a product by ID
+export const getProductById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Check if ID is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ Success: false, message: "Invalid product ID" });
+        }
+        // getThe Product by ID
+        const s_product = await Product.findById(id);
+
+        if (!s_product) {
+            return res.status(404).json({ Success: false, message: "Product not found" });
+        }
+
+        const camelCasedProduct = toCamelCase(s_product.toObject());
+        
+
+        res.status(200).json(camelCasedProduct);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

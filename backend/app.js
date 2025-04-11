@@ -13,7 +13,7 @@ import RMArouter from './routes/RMARoutes.js';
 import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
 import gameRouter from './routes/gameRouter.js'
-
+import checkoutRoutes from "./routes/checkoutRoutes.js";
 
 // Load environment variables
 dotenv.config({ path: "./config.env" });
@@ -70,6 +70,7 @@ app.use("/api/review", reviewrouter);
 
 //product routes
 app.use('/api/product', prouter);
+app.use("/api", checkoutRoutes);
 
 //game routes
 app.use('/api/game', gameRouter);
