@@ -6,12 +6,12 @@ const ReviewSchema = new Schema({
         enum: ['product', 'pc_build'],
         required: true
     },
-    itemID: {
+    itemId: {
         type: Schema.Types.ObjectId,
         required: true,
         refPath: 'type'
     },
-    userID: {
+    userId: {
         type: Schema.Types.ObjectId,
         required: true,
         ref: 'User'

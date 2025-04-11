@@ -87,7 +87,32 @@ RMArouter.put('/admin/respond/:id', async (req, res) => {
   }
 });
 
+// Update RMA status
+RMArouter.put('/status/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    // Ensure status is provided and valid
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
 
+    const updatedRMA = await RMA.findByIdAndUpdate(
+      req.params.id,
+      { status, updatedAt: Date.now() },
+      { new: true }
+    );
+
+    if (!updatedRMA) {
+      return res.status(404).json({ error: 'RMA request not found' });
+    }
+
+    res.status(200).json(updatedRMA);
+  } catch (error) {
+    console.error('Status Update Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 
 
