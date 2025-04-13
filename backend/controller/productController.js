@@ -1,257 +1,482 @@
-// Controller file
-import mongoose from "mongoose";
-import Product from "../model/productModel.js";
-import { v2 as cloudinary } from "cloudinary";
+import mongoose from 'mongoose';
+import Product from '../model/productModel.js';
+import { v2 as cloudinary } from 'cloudinary';
 
-// Clean the object by removing null values
+// Clean the object by removing null or empty values
 const cleanObject = (obj) => {
-    return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""));
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value !== null && value !== '' && value !== undefined)
+  );
 };
 
-// Convert snake_case to camelCase (already defined elsewhere, reused here)
+// Convert snake_case to camelCase
 const toCamelCase = (obj) => {
-    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return obj;
-    return Object.fromEntries(
-        Object.entries(obj).map(([key, value]) => [
-            key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()),
-            toCamelCase(value),
-        ])
-    );
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()),
+      toCamelCase(value),
+    ])
+  );
+};
+
+// Convert camelCase to snake_case
+const toSnakeCase = (obj) => {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`),
+      toSnakeCase(value),
+    ])
+  );
 };
 
 export const createProduct = async (req, res) => {
-    let product = JSON.parse(req.body.product); // Middleware has already converted to snake_case
+  try {
+    let product;
+    try {
+      product = JSON.parse(req.body.product || '{}');
+    } catch (error) {
+      console.error('Error parsing req.body.product:', error.message);
+      return res.status(400).json({ Success: false, message: 'Invalid product data format' });
+    }
+
     product = cleanObject(product);
 
-    // Initialize the images
-    const image1 = req.files.image1 && req.files.image1[0];
-    const image2 = req.files.image2 && req.files.image2[0];
-    const image3 = req.files.image3 && req.files.image3[0];
-    const image4 = req.files.image4 && req.files.image4[0];
+    // Initialize images
+    const images = [
+      req.files.image1?.[0],
+      req.files.image2?.[0],
+      req.files.image3?.[0],
+      req.files.image4?.[0],
+    ].filter((item) => item !== undefined);
 
-    // Check if any images are provided
-    const images = [image1, image2, image3, image4].filter((item) => item !== undefined);
-    let imagesUrl = await Promise.all(
-        images.map(async (item) => {
-            let result = await cloudinary.uploader.upload(
-                item.path,
-                { folder: "Products", resource_type: "image" },
-            );
-            return {
+    let imagesUrl = [];
+    if (images.length > 0) {
+      try {
+        imagesUrl = await Promise.all(
+          images.map(async (item) => {
+            try {
+              const result = await cloudinary.uploader.upload(item.path, {
+                folder: 'Products',
+                resource_type: 'image',
+              });
+              return {
                 public_id: result.public_id,
                 url: result.secure_url,
-            };
-        })
-    );
+              };
+            } catch (uploadError) {
+              console.error(`Error uploading image: ${item.path}`, uploadError.message);
+              throw new Error(`Image upload failed: ${uploadError.message}`);
+            }
+          })
+        );
+      } catch (error) {
+        console.error('Error in image uploads:', error.message);
+        return res.status(500).json({ Success: false, message: `Failed to upload images: ${error.message}` });
+      }
+    }
 
     const newProduct = new Product({
-        ...product,
-        img_urls: imagesUrl,
+      ...product,
+      img_urls: imagesUrl,
     });
 
-    console.log("New product to save:", newProduct);
+    // Validation for required fields by type
+    const requiredFields = {
+      processor: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'socket_type',
+        'tdp',
+        'core_count',
+        'thread_count',
+        'base_clock',
+        'boost_clock',
+      ],
+      cooling: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'cooler_type',
+        'supported_socket',
+        'max_tdp',
+        'height',
+        'tdp',
+      ],
+      motherboard: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'socket_type',
+        'motherboard_chipset',
+        'form_factor',
+        'ram_slots',
+        'max_ram',
+        'supported_memory_types',
+        'pcie_slots',
+        'storage_interfaces',
+        'tdp',
+      ],
+      ram: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'memory_type',
+        'memory_capacity',
+        'memory_speed',
+        'tdp',
+      ],
+      storage: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'storage_type',
+        'storage_capacity',
+        'tdp',
+      ],
+      gpu: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'interface_type',
+        'tdp',
+        'length',
+        'power_connectors',
+        'vram',
+        'gpu_chipset',
+      ],
+      casing: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'form_factor',
+        'supported_motherboard_sizes',
+        'max_gpu_length',
+        'max_cooler_height',
+      ],
+      power: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'wattage',
+        'efficiency_rating',
+        'modular_type',
+      ],
+      laptop: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'display_size',
+        'resolution',
+        'cpu',
+        'ram',
+        'storage',
+        'graphic_card',
+      ],
+      prebuild: [
+        'type',
+        'name',
+        'description',
+        'manufacturer',
+        'quantity',
+        'price',
+        'cpu',
+        'cpu_cores',
+        'cpu_threads',
+        'cpu_base_clock',
+        'cpu_boost_clock',
+        'graphic_card',
+        'gpu_series',
+        'gpu_vram_gb',
+        'gpu_boost_clock_mhz',
+        'gpu_cores',
+        'ram_size_gb',
+        'ram_speed_mhz',
+        'ram_type',
+        'storage',
+        'desktop_type',
+      ],
+      expansion_network: ['type', 'name', 'description', 'manufacturer', 'quantity', 'price'],
+      default: ['type', 'name', 'description', 'manufacturer', 'quantity', 'price'],
+    };
 
-    // Basic validation
-    if (!product.type || !product.manufacturer || !product.name || !product.description ||
-        !product.quantity || !product.price || !imagesUrl.length) {
-        return res.status(400).json({ Success: false, message: "Please enter all required fields" });
+    if (product.type === 'expansion_network') {
+      if (product.component_type === 'sound_card') {
+        requiredFields.expansion_network.push('sound_card_channels');
+      } else if (product.component_type === 'wired_network_adapter') {
+        requiredFields.expansion_network.push('network_speed');
+      } else if (product.component_type === 'wireless_network_adapter') {
+        requiredFields.expansion_network.push('wifi_standard');
+      }
     }
 
-    // Optional: Add prebuild-specific validation
-    if (product.type === "prebuild" && (!product.cpu || !product.graphic_card || !product.desktop_type)) {
-        return res.status(400).json({
-            Success: false,
-            message: "Please enter required prebuild fields (cpu, graphic_card, desktop_type)"
-        });
+    const fieldsToCheck = requiredFields[product.type] || requiredFields.default;
+    const missingFields = fieldsToCheck.filter((field) => {
+      if (field === 'img_urls') return imagesUrl.length === 0;
+      if (['supported_socket', 'supported_memory_types', 'power_connectors', 'supported_motherboard_sizes', 'pcie_slots', 'storage_interfaces'].includes(field)) {
+        return !product[field] || product[field].length === 0;
+      }
+      return !product[field];
+    });
+
+    if (missingFields.length > 0 || imagesUrl.length === 0) {
+      return res.status(400).json({
+        Success: false,
+        message: `Please provide all required fields: ${missingFields.join(', ')}${imagesUrl.length === 0 ? ', images' : ''}`,
+      });
     }
 
-    try {
-        await newProduct.save();
-        res.status(201).json({ Success: true, data: toCamelCase(newProduct.toObject()) });
-    } catch (error) {
-        console.error("Error in createProduct:", error.message);
-        res.status(500).json({ Success: false, message: "Server Error" });
-    }
-}
+    await newProduct.save();
+    res.status(201).json({ Success: true, data: toCamelCase(newProduct.toObject()) });
+  } catch (error) {
+    console.error('Error in createProduct:', error.message, error.stack);
+    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+  }
+};
 
 export const getProducts = async (req, res) => {
-    try {
-        const { search } = req.query;
-        const query = {};
+  try {
+    const { search } = req.query;
+    const query = {};
 
-        if (search) {
-            query.$or = [
-                { name: { $regex: search, $options: "i" } },  // Case-insensitive name search
-            ];
-        }
-
-        const products = await Product.find(query);
-        const formattedProducts = products.map((product) => {
-            const productObj = product.toObject();
-            const camelCasedProduct = toCamelCase(productObj);
-
-            return {
-                ...camelCasedProduct,
-                _id: productObj._id,
-                createdAt: productObj.createdAt,
-                updatedAt: productObj.updatedAt
-            }
-        });
-        res.status(200).json({ Success: true, data: formattedProducts });
-    } catch (error) {
-        console.error("Error in geting product:", error.message);
-        res.status(500).json({ Success: false, message: "Server Error" });
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { type: { $regex: search, $options: 'i' } },
+        { manufacturer: { $regex: search, $options: 'i' } },
+        { motherboard_chipset: { $regex: search, $options: 'i' } },
+        { gpu_chipset: { $regex: search, $options: 'i' } },
+        { cooler_type: { $regex: search, $options: 'i' } },
+        { wattage: { $regex: search, $options: 'i' } },
+        { modular_type: { $regex: search, $options: 'i' } },
+        { storage_type: { $regex: search, $options: 'i' } },
+      ];
     }
-}
+
+    const products = await Product.find(query);
+    const formattedProducts = products.map((product) => {
+      const productObj = product.toObject();
+      return {
+        ...toCamelCase(productObj),
+        _id: productObj._id,
+        createdAt: productObj.createdAt,
+        updatedAt: productObj.updatedAt,
+      };
+    });
+    res.status(200).json({ Success: true, data: formattedProducts });
+  } catch (error) {
+    console.error('Error in getProducts:', error.message, error.stack);
+    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+  }
+};
 
 export const updateProduct = async (req, res) => {
+  try {
     const { id } = req.params;
-    const product = req.body;
-
+    let product;
     try {
-        // Check if ID is a valid ObjectId
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ Success: false, message: "Invalid product ID" });
-        }
-        // Check if the product exists
-        const existingProduct = await Product.findById(id);
-        if (!existingProduct) {
-            return res.status(404).json({ Success: false, message: "Product not found" });
-        } else {
-            // Convert camelCase to snake_case before updating
-            product = toSnakeCase(product);
-
-            // Update the product with only provided fields
-            const updatedProduct = await Product.findByIdAndUpdate(id, { $set: product }, { new: true });
-            res.status(200).json({ Success: true, data: updatedProduct });
-
-            // Convert back to camelCase for frontend response
-            res.status(200).json({ Success: true, data: toCamelCase(updatedProduct.toObject()) });
-        }
+      product = JSON.parse(req.body.product || '{}');
     } catch (error) {
-        console.error("Error in updating product:", error.message);
-        res.status(500).json({ Success: false, message: "Server Error" });
+      console.error('Error parsing req.body.product:', error.message);
+      return res.status(400).json({ Success: false, message: 'Invalid product data format' });
     }
-}
+
+    product = cleanObject(toSnakeCase(product));
+
+    // Handle images
+    const images = [
+      req.files.image1?.[0],
+      req.files.image2?.[0],
+      req.files.image3?.[0],
+      req.files.image4?.[0],
+    ].filter((item) => item !== undefined);
+
+    let imagesUrl = [];
+    if (images.length > 0) {
+      try {
+        imagesUrl = await Promise.all(
+          images.map(async (item) => {
+            try {
+              const result = await cloudinary.uploader.upload(item.path, {
+                folder: 'Products',
+                resource_type: 'image',
+              });
+              return {
+                public_id: result.public_id,
+                url: result.secure_url,
+              };
+            } catch (uploadError) {
+              console.error(`Error uploading image: ${item.path}`, uploadError.message);
+              throw new Error(`Image upload failed: ${uploadError.message}`);
+            }
+          })
+        );
+        product.img_urls = imagesUrl;
+      } catch (error) {
+        console.error('Error in image uploads:', error.message);
+        return res.status(500).json({ Success: false, message: `Failed to upload images: ${error.message}` });
+      }
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ Success: false, message: 'Invalid product ID' });
+    }
+
+    const existingProduct = await Product.findById(id);
+    if (!existingProduct) {
+      return res.status(404).json({ Success: false, message: 'Product not found' });
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(id, { $set: product }, { new: true });
+    res.status(200).json({ Success: true, data: toCamelCase(updatedProduct.toObject()) });
+  } catch (error) {
+    console.error('Error in updateProduct:', error.message, error.stack);
+    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+  }
+};
 
 export const deleteProduct = async (req, res) => {
+  try {
     const { id } = req.params;
-    console.log("=================================Deleting product with ID:", id);
-    try {
-        // Check if ID is a valid ObjectId
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ Success: false, message: "Invalid product ID" });
-        }
-        // Check if the product exists
-        const existingProduct = await Product.findByIdAndDelete(id);
-        // Get the type of the product
-        const productType = existingProduct.type;
-        if (!existingProduct) {
-            return res.status(404).json({ Success: false, message: "Product not found" });
-        }
-        // Retrieve image IDs and delete images from Cloudinary
-        if (existingProduct.img_urls?.length) {
-            await Promise.all(
-                existingProduct.img_urls.map((img) =>
-                    cloudinary.uploader.destroy(img.public_id).catch((err) => {
-                        console.error(`Error deleting image: ${img.public_id}`, err);
-                    })
-                )
-            );
-        }
-        res.status(200).json({ Success: true, message: `${productType} Deleted Successfully`, });
 
-    } catch (error) {
-        console.error("Error in deleting product:", error);
-        res.status(500).json({ Success: false, message: "Server Error" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ Success: false, message: 'Invalid product ID' });
     }
-}
 
+    const existingProduct = await Product.findByIdAndDelete(id);
+    if (!existingProduct) {
+      return res.status(404).json({ Success: false, message: 'Product not found' });
+    }
 
+    if (existingProduct.img_urls?.length) {
+      try {
+        await Promise.all(
+          existingProduct.img_urls.map((img) =>
+            cloudinary.uploader.destroy(img.public_id).catch((err) => {
+              console.error(`Error deleting image: ${img.public_id}`, err.message);
+            })
+          )
+        );
+      } catch (error) {
+        console.error('Error deleting images:', error.message);
+        // Continue with deletion even if image cleanup fails
+      }
+    }
 
-//search products
+    res.status(200).json({
+      Success: true,
+      message: `${existingProduct.type} Deleted Successfully`,
+    });
+  } catch (error) {
+    console.error('Error in deleteProduct:', error.message, error.stack);
+    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+  }
+};
 
 export const getProductsBySearch = async (req, res) => {
-    try {
-        const query = req.query.query;
-        if (!query) {
-            return res.status(400).json({ message: "Query parameter is required" });
-        }
-
-        console.log("Search query:", query); // Debugging
-
-        const products = await Product.find({
-            $or: [
-                { name: { $regex: query, $options: "i" } },
-                { type: { $regex: query, $options: "i" } },
-                { description: { $regex: query, $options: "i" } }
-            ],
-        });
-
-        console.log("Found products:", products); // Debugging
-
-        const formattedProducts = products.map((product) => {
-            const productObj = product.toObject();
-            const camelCasedProduct = toCamelCase(productObj);
-
-            return {
-                ...camelCasedProduct,
-                _id:productObj._id,
-                
-         
-            }
-        });
-
-        res.json(formattedProducts);
-    } catch (error) {
-        console.error("Search error:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+  try {
+    const query = req.query.query;
+    if (!query) {
+      return res.status(400).json({ Success: false, message: 'Query parameter is required' });
     }
+
+    const products = await Product.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { type: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } },
+        { manufacturer: { $regex: query, $options: 'i' } },
+        { motherboard_chipset: { $regex: query, $options: 'i' } },
+        { gpu_chipset: { $regex: query, $options: 'i' } },
+        { cooler_type: { $regex: query, $options: 'i' } },
+        { wattage: { $regex: query, $options: 'i' } },
+        { modular_type: { $regex: query, $options: 'i' } },
+        { storage_type: { $regex: query, $options: 'i' } },
+      ],
+    });
+
+    const formattedProducts = products.map((product) => {
+      const productObj = product.toObject();
+      return {
+        ...toCamelCase(productObj),
+        _id: productObj._id,
+      };
+    });
+
+    res.status(200).json({ Success: true, data: formattedProducts });
+  } catch (error) {
+    console.error('Error in getProductsBySearch:', error.message, error.stack);
+    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+  }
 };
 
-// Get products by attribute
 export const getProductsByAttribute = async (req, res) => {
-    try {
-        const { attribute, value } = req.query;
-        const query = { [attribute]: value };
-        const products = await Product.find(query);
-        const formattedProducts = products.map((product) => {
-            const productObj = product.toObject();
-            const camelCasedProduct = toCamelCase(productObj);
-
-            return {
-                ...camelCasedProduct,
-                _id:productObj._id,
-                
-            }
-        });
-        res.status(200).json(formattedProducts);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+  try {
+    const { attribute, value } = req.query;
+    if (!attribute || !value) {
+      return res.status(400).json({ Success: false, message: 'Attribute and value are required' });
     }
+
+    const query = { [toSnakeCase(attribute)]: value };
+    const products = await Product.find(query);
+    const formattedProducts = products.map((product) => {
+      const productObj = product.toObject();
+      return {
+        ...toCamelCase(productObj),
+        _id: productObj._id,
+      };
+    });
+    res.status(200).json({ Success: true, data: formattedProducts });
+  } catch (error) {
+    console.error('Error in getProductsByAttribute:', error.message, error.stack);
+    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+  }
 };
 
-
-// Get a product by ID
 export const getProductById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        // Check if ID is a valid ObjectId
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ Success: false, message: "Invalid product ID" });
-        }
-        // getThe Product by ID
-        const s_product = await Product.findById(id);
-
-        if (!s_product) {
-            return res.status(404).json({ Success: false, message: "Product not found" });
-        }
-
-        const camelCasedProduct = toCamelCase(s_product.toObject());
-        
-
-        res.status(200).json(camelCasedProduct);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ Success: false, message: 'Invalid product ID' });
     }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ Success: false, message: 'Product not found' });
+    }
+
+    res.status(200).json({ Success: true, data: toCamelCase(product.toObject()) });
+  } catch (error) {
+    console.error('Error in getProductById:', error.message, error.stack);
+    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+  }
 };
