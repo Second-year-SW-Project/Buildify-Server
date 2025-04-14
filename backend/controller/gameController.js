@@ -143,5 +143,28 @@ const removeGames = async (req, res) => {
     }
 };
 
+// Add this function to gameController.js
+const getGameById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Check if ID is valid
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid game ID format' });
+        }
 
-export { addGames, listGames, updateGames, removeGames };
+        const game = await gameModel.findById(id);
+        
+        if (!game) {
+            return res.status(404).json({ success: false, message: 'Game not found' });
+        }
+
+        res.json({ success: true, game });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Update your export statement to include getGameById
+export { addGames, listGames, updateGames, removeGames, getGameById };
