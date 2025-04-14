@@ -301,65 +301,45 @@ export const getProducts = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    let product;
-    try {
-      product = JSON.parse(req.body.product || '{}');
-    } catch (error) {
-      console.error('Error parsing req.body.product:', error.message);
-      return res.status(400).json({ Success: false, message: 'Invalid product data format' });
-    }
-
-    product = cleanObject(toSnakeCase(product));
-
-    // Handle images
+    let product = JSON.parse(req.body.product || '{}');
     const images = [
       req.files.image1?.[0],
       req.files.image2?.[0],
       req.files.image3?.[0],
       req.files.image4?.[0],
-    ].filter((item) => item !== undefined);
-
+    ].filter(Boolean);
     let imagesUrl = [];
+
+    // Handle image uploads
     if (images.length > 0) {
-      try {
-        imagesUrl = await Promise.all(
-          images.map(async (item) => {
-            try {
-              const result = await cloudinary.uploader.upload(item.path, {
-                folder: 'Products',
-                resource_type: 'image',
-              });
-              return {
-                public_id: result.public_id,
-                url: result.secure_url,
-              };
-            } catch (uploadError) {
-              console.error(`Error uploading image: ${item.path}`, uploadError.message);
-              throw new Error(`Image upload failed: ${uploadError.message}`);
-            }
-          })
-        );
-        product.img_urls = imagesUrl;
-      } catch (error) {
-        console.error('Error in image uploads:', error.message);
-        return res.status(500).json({ Success: false, message: `Failed to upload images: ${error.message}` });
-      }
+      imagesUrl = await Promise.all(
+        images.map(async (item) => {
+          const result = await cloudinary.uploader.upload(item.path, {
+            folder: 'Products',
+            resource_type: 'image',
+          });
+          return { public_id: result.public_id, url: result.secure_url };
+        })
+      );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ Success: false, message: 'Invalid product ID' });
-    }
+    // Remove _id from product payload
+    delete product._id;
 
-    const existingProduct = await Product.findById(id);
-    if (!existingProduct) {
+    // Update product
+    const updatedProduct = await Product.findOneAndUpdate(
+      { _id: req.params.id },
+      { ...product, ...(imagesUrl.length > 0 && { img_urls: imagesUrl }) },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProduct) {
       return res.status(404).json({ Success: false, message: 'Product not found' });
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(id, { $set: product }, { new: true });
     res.status(200).json({ Success: true, data: toCamelCase(updatedProduct.toObject()) });
   } catch (error) {
-    console.error('Error in updateProduct:', error.message, error.stack);
+    console.error('Error in updateProduct:', error.message);
     res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
   }
 };
