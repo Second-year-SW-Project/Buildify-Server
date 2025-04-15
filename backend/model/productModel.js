@@ -107,15 +107,15 @@ const productSchema = new mongoose.Schema(
     wired_network_speed: { type: String, required: false },
     wifi_standard: { type: String, required: false },
   },
-  { 
+  {
     timestamps: true,
-    toJSON: { 
+    toJSON: {
       virtuals: true,
       transform: (doc, ret) => {
         delete ret._id;
         delete ret.__v;
         return toCamelCase(ret);
-      } 
+      }
     },
     toObject: { virtuals: true }
   }
