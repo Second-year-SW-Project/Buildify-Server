@@ -382,81 +382,94 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
+//get product by search
 export const getProductsBySearch = async (req, res) => {
   try {
-    const query = req.query.query;
-    if (!query) {
-      return res.status(400).json({ Success: false, message: 'Query parameter is required' });
-    }
+      const query = req.query.query;
+      if (!query) {
+          return res.status(400).json({ message: "Query parameter is required" });
+      }
 
-    const products = await Product.find({
-      $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { type: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } },
-        { manufacturer: { $regex: query, $options: 'i' } },
-        { motherboard_chipset: { $regex: query, $options: 'i' } },
-        { gpu_chipset: { $regex: query, $options: 'i' } },
-        { cooler_type: { $regex: query, $options: 'i' } },
-        { wattage: { $regex: query, $options: 'i' } },
-        { modular_type: { $regex: query, $options: 'i' } },
-        { storage_type: { $regex: query, $options: 'i' } },
-      ],
-    });
+      console.log("Search query:", query); // Debugging
 
-    const formattedProducts = products.map((product) => {
-      const productObj = product.toObject();
-      return {
-        ...toCamelCase(productObj),
-        _id: productObj._id,
-      };
-    });
+      const products = await Product.find({
+          $or: [
+              { name: { $regex: query, $options: "i" } },
+              { type: { $regex: query, $options: "i" } },
+              { description: { $regex: query, $options: "i" } }
+          ],
+      });
 
-    res.status(200).json({ Success: true, data: formattedProducts });
+      console.log("Found products:", products); // Debugging
+
+      const formattedProducts = products.map((product) => {
+          const productObj = product.toObject();
+          const camelCasedProduct = toCamelCase(productObj);
+
+          return {
+              ...camelCasedProduct,
+              _id:productObj._id,
+              
+       
+          }
+      });
+
+      res.json(formattedProducts);
   } catch (error) {
-    console.error('Error in getProductsBySearch:', error.message, error.stack);
-    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+      console.error("Search error:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
+// Get products by attribute
 export const getProductsByAttribute = async (req, res) => {
   try {
-    const { attribute, value } = req.query;
-    if (!attribute || !value) {
-      return res.status(400).json({ Success: false, message: 'Attribute and value are required' });
-    }
+      const { attribute, value } = req.query;
 
-    const query = { [toSnakeCase(attribute)]: value };
-    const products = await Product.find(query);
-    const formattedProducts = products.map((product) => {
-      const productObj = product.toObject();
-      return {
-        ...toCamelCase(productObj),
-        _id: productObj._id,
-      };
-    });
-    res.status(200).json({ Success: true, data: formattedProducts });
+
+      const query = { [toSnakeCase(attribute)]: value };
+
+      const products = await Product.find(query);
+
+      const formattedProducts = products.map((product) => {
+          const productObj = product.toObject();
+          const camelCasedProduct = toCamelCase(productObj);
+
+          return {
+              ...camelCasedProduct,
+              _id:productObj._id,
+              
+          }
+      });
+      res.status(200).json(formattedProducts);
   } catch (error) {
-    console.error('Error in getProductsByAttribute:', error.message, error.stack);
-    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+      res.status(500).json({ error: error.message });
   }
 };
 
+// // Get a product by ID
 export const getProductById = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ Success: false, message: 'Invalid product ID' });
-    }
+      const { id } = req.params;
+      // Check if ID is a valid ObjectId
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+          return res.status(400).json({ Success: false, message: "Invalid product ID" });
+      }
+      // getThe Product by ID
+      const s_product = await Product.findById(id);
 
-    const product = await Product.findById(id);
-    if (!product) {
-      return res.status(404).json({ Success: false, message: 'Product not found' });
-    }
+      if (!s_product) {
+          return res.status(404).json({ Success: false, message: "Product not found" });
+      }
 
-    res.status(200).json({ Success: true, data: toCamelCase(product.toObject()) });
+      const camelCasedProduct = toCamelCase(s_product.toObject());
+      
+
+      res.status(200).json(camelCasedProduct);
   } catch (error) {
-    console.error('Error in getProductById:', error.message, error.stack);
-    res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+      res.status(500).json({ error: error.message });
   }
 };
+
+
+
