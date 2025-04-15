@@ -36,7 +36,7 @@ const productSchema = new mongoose.Schema(
     includes_cooler: { type: Boolean, default: false },
     // Cooler
     cooler_type: { type: String, required: false },
-    supported_socket: [{ type: String }], // Array for multiple sockets
+    supported_socket: { type: String, required: false },
     max_tdp: { type: Number, required: false },
     height: { type: Number, required: false }, // In mm
     // Motherboard
@@ -44,7 +44,7 @@ const productSchema = new mongoose.Schema(
     form_factor: { type: String, required: false },
     ram_slots: { type: Number, required: false },
     max_ram: { type: Number, required: false },
-    supported_memory_types: [{ type: String }], // Array
+    supported_memory_types: { type: String, required: false },
     pcie_slots: [
       {
         type: { type: String }, // e.g., "x16"
@@ -67,11 +67,12 @@ const productSchema = new mongoose.Schema(
     // GPU
     interface_type: { type: String, required: false },
     length: { type: Number, required: false }, // In mm
-    power_connectors: [{ type: String }], // Array
+    power_connectors: { type: String, required: false },
     vram: { type: String, required: false }, // Changed to String for "8 GB"
     gpu_chipset: { type: String, required: false },
+    gpu_cores: { type: String, required: false },
     // Case
-    supported_motherboard_sizes: [{ type: String }], // Array
+    supported_motherboard_sizes: { type: String, required: false }, // Maximum Size
     max_gpu_length: { type: Number, required: false }, // In mm
     max_cooler_height: { type: Number, required: false }, // In mm
     // Power Supply
@@ -99,6 +100,11 @@ const productSchema = new mongoose.Schema(
     ram_size_gb: { type: String, required: false },
     ram_speed_mhz: { type: String, required: false },
     ram_type: { type: String, required: false },
+    // Expansion Network (Sound Card, Wired/Wireless Network Adapters)
+    component_type: { type: String, required: false }, // e.g., "sound_card", "wired_network_adapter", "wireless_network_adapter"
+    sound_card_channels: { type: String, required: false }, // e.g., "2.0", "5.1", "7.1"
+    wired_network_speed: { type: String, required: false }, // e.g., "100Mbps", "1Gbps"
+    wifi_standard: { type: String, required: false }, // e.g., "WiFi_6", "WiFi_6E"
   },
   { timestamps: true }
 );

@@ -451,23 +451,41 @@ export const getProductsByAttribute = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`Fetching product with ID: ${id}`); // Debug log
+
     // Check if ID is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ Success: false, message: "Invalid product ID" });
+      console.log(`Invalid product ID format: ${id}`);
+      return res.status(400).json({ Success: false, message: `Invalid product ID: ${id}` });
     }
-    // getThe Product by ID
+
+    // Fetch product
     const s_product = await Product.findById(id);
-
     if (!s_product) {
-      return res.status(404).json({ Success: false, message: "Product not found" });
+      console.log(`Product not found for ID: ${id}`);
+      return res.status(404).json({ Success: false, message: `Product not found for ID: ${id}` });
     }
 
+    // Convert to camelCase
+    console.log('Converting product to camelCase:', s_product._id.toString());
     const camelCasedProduct = toCamelCase(s_product.toObject());
 
-
-    res.status(200).json(camelCasedProduct);
+    res.status(200).json({ Success: true, data: camelCasedProduct });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error in getProductById:', {
+      message: error.message,
+      stack: error.stack,
+      id: req.params.id,
+      mongoConnection: mongoose.connection.readyState, // 0=disconnected, 1=connected
+    });
+    res.status(500).json({ 
+      Success: false, 
+      message: `Server error: ${error.message}`,
+      details: {
+        mongoConnection: mongoose.connection.readyState,
+        errorName: error.name,
+      }
+    });
   }
 };
 
