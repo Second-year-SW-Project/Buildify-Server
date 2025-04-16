@@ -58,7 +58,7 @@ RMArouter.get('/admin/requests', async (req, res) => {
 
     const requests = await RMA
       .find(query)
-      .populate('userId', 'name email') // populate name and email from user
+      .populate('userId', 'name email profilePicture') // populate name and email from user
       .sort({ createdAt: -1 });
 
     res.status(200).json(requests);
