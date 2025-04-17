@@ -351,7 +351,7 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-//get product by search
+// Get products by search
 export const getProductsBySearch = async (req, res) => {
   try {
     const query = req.query.query;
@@ -378,8 +378,6 @@ export const getProductsBySearch = async (req, res) => {
       return {
         ...camelCasedProduct,
         _id: productObj._id,
-
-
       }
     });
 
@@ -393,10 +391,18 @@ export const getProductsBySearch = async (req, res) => {
 // Get products by attribute
 export const getProductsByAttribute = async (req, res) => {
   try {
-    const { attribute, value } = req.query;
-
-
-    const query = { [toSnakeCase(attribute)]: value };
+    const query = {};
+    const attributes = Object.keys(req.query).filter(key => key.startsWith('attribute'));
+    
+    attributes.forEach((attrKey, index) => {
+      const valueKey = `value${index === 0 ? '' : index + 1}`;
+      const attr = req.query[attrKey];
+      const value = req.query[valueKey];
+      
+      if (attr && value) {
+        query[toSnakeCase(attr)] = value;
+      }
+    });
 
     const products = await Product.find(query);
 
@@ -407,7 +413,6 @@ export const getProductsByAttribute = async (req, res) => {
       return {
         ...camelCasedProduct,
         _id: productObj._id,
-
       }
     });
     res.status(200).json(formattedProducts);
@@ -416,7 +421,7 @@ export const getProductsByAttribute = async (req, res) => {
   }
 };
 
-// // Get a product by ID
+// Get a product by ID
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -457,6 +462,3 @@ export const getProductById = async (req, res) => {
     });
   }
 };
-
-
-
