@@ -13,7 +13,7 @@ import RMArouter from './routes/RMARoutes.js';
 import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
 import gameRouter from './routes/gameRouter.js';
-import checkoutRoutes from './routes/checkoutRoutes.js';
+import checkroutes from './routes/checkoutRoutes.js';
 import configurePassport from './config/passport.js';
 import router from './routes/auth.js';
 
@@ -59,7 +59,7 @@ app.use('/api', crouter);
 app.use('/api/rma', RMArouter);
 app.use('/api/reviewwik', reviewrouter);
 app.use('/api/product', prouter);
-app.use('/api', checkoutRoutes);
+app.use('/api', checkroutes);
 app.use('/api/game', gameRouter);
 
 // Handle Unmatched Routes

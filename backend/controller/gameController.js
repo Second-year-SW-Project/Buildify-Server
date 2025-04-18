@@ -25,7 +25,7 @@ const addGames = async (req, res) => {
         if (typeof cpu === 'string') cpu = JSON.parse(cpu);
         if (typeof gpu === 'string') gpu = JSON.parse(gpu);
         if (typeof ram === 'string') ram = JSON.parse(ram);
-        
+
         // Validate required fields
         if (!name || !description || !cpu || !gpu || !ram || !image) {
             return res.status(400).json({ success: false, message: 'All fields are required, including an image' });
@@ -147,14 +147,14 @@ const removeGames = async (req, res) => {
 const getGameById = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         // Check if ID is valid
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'Invalid game ID format' });
         }
 
         const game = await gameModel.findById(id);
-        
+
         if (!game) {
             return res.status(404).json({ success: false, message: 'Game not found' });
         }
