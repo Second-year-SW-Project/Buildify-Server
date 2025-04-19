@@ -57,7 +57,7 @@ app.use('/auth', router);
 app.use('/api/v1/users', userRouters);
 app.use('/api', crouter);
 app.use('/api/rma', RMArouter);
-app.use('/api/reviewwik', reviewrouter);
+app.use('/api/review', reviewrouter);
 app.use('/api/product', prouter);
 app.use('/api', checkroutes);
 app.use('/api/game', gameRouter);

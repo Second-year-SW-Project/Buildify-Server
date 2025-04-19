@@ -75,9 +75,9 @@ export const checkout = async (req, res) => {
 export const getOrders = async (req, res) => {
     try {
         const orders = await Transaction.find(); // Fetch all orders from the database
-        res.status(200).json(orders);
+        res.status(200).json({ Success: true, data: orders });
     } catch (error) {
         console.error("Error fetching orders:", error);
         res.status(500).json({ message: "Failed to fetch orders" });
     }
-};
+}; 

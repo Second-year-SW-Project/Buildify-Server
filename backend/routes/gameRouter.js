@@ -4,7 +4,8 @@ import upload from '../middleware/multer.js';
 
 const gameRouter = express.Router();
 
-gameRouter.route('/games').post(upload.single('image'), addGames)
+gameRouter.route('/games')
+    .post(upload.single('image'), addGames)
     .get(listGames);
 
 gameRouter.route('/games/:id')
