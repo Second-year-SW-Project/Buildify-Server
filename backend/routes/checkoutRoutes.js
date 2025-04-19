@@ -1,8 +1,9 @@
 import express from "express";
-import { checkout } from "../controller/checkoutController.js";
+import { checkout, getOrders } from "../controller/checkoutController.js";
 
-const router = express.Router();
+const checkrouter = express.Router();
 
-router.post("/checkout", checkout);
+checkrouter.post("/checkout", checkout);
+checkrouter.get("/checkout", getOrders);
 
-export default router;
+export default checkrouter; // Add this line for default export
