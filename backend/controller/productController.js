@@ -444,7 +444,7 @@ export const getProductById = async (req, res) => {
     console.log('Converting product to camelCase:', s_product._id.toString());
     const camelCasedProduct = toCamelCase(s_product.toObject());
 
-    res.status(200).json({ Success: true, data: camelCasedProduct });
+    res.status(200).json({ Success: true, ...camelCasedProduct });
   } catch (error) {
     console.error('Error in getProductById:', {
       message: error.message,
