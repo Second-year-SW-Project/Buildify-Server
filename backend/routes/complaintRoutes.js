@@ -63,9 +63,8 @@ crouter.put('/complaints/admin/respond/:id', async (req, res) => {
     if (!complaint) {
       return res.status(404).json({ message: 'Complaint not found' });
     }
-
     // Update complaint's status and add the admin's response
-    complaint.status = 'Resolved';
+    complaint.status = status;
     complaint.response = response;
     await complaint.save();
 
