@@ -56,9 +56,10 @@ RMArouter.get('/admin/requests', async (req, res) => {
     if (orderId) query.orderId = orderId;
     if (status) query.status = status;
 
-    const requests = await RMA.find(query)
-      .sort({ createdAt: -1 })
-      .lean();
+    const requests = await RMA
+      .find(query)
+      .populate('userId', 'name email profilePicture') // populate name and email from user
+      .sort({ createdAt: -1 });
 
     res.status(200).json(requests);
   } catch (error) {
@@ -66,6 +67,7 @@ RMArouter.get('/admin/requests', async (req, res) => {
     res.status(500).json([]); // Return empty array on error
   }
 });
+
 
 // Update RMA response
 RMArouter.put('/admin/respond/:id', async (req, res) => {
