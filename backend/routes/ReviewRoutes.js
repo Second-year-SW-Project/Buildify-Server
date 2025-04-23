@@ -38,7 +38,7 @@ reviewrouter.get('/admin', async (req, res) => {
         const query = {};
 
         if (type) query.type = type;
-        if (itemId) query.itemID = itemId;
+        if (itemId) query.itemId = itemId;
         if (minRating) query.rating = { $gte: Number(minRating) };
         if (maxRating) {
             query.rating = query.rating
@@ -47,8 +47,8 @@ reviewrouter.get('/admin', async (req, res) => {
         }
 
         const reviews = await Review.find(query)
-            .populate("userID", "name email") // Use 'userID' instead of 'userId'
-            .populate("itemID", "name description");
+            .populate("userId", "name email") // Use 'userID' instead of 'userId'
+            .populate("itemId", "name description");
         res.json(reviews);
     } catch (error) {
         console.error(error);
@@ -67,8 +67,8 @@ reviewrouter.post('/admin/respond/:reviewId', async (req, res) => {
         }
 
         const review = await Review.findById(reviewId)
-            .populate("userID", "name email")
-            .populate("itemID", "name description");
+            .populate("userId", "name email")
+            .populate("itemId", "name description");
 
         if (!review) {
             return res.status(404).json({ error: "Review not found" });

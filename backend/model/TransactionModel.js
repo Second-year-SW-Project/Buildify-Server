@@ -12,7 +12,11 @@ const transactionSchema = new mongoose.Schema({
     ],
     total: Number,
     status: String,
-    user_id: String,
+    user_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     createdAt: {
         type: Date,
         default: Date.now,

@@ -18,7 +18,7 @@ import invoicerouter from './routes/invoiceRoutes.js';
 dotenv.config({ path: "./config.env" });
 
 import gameRouter from './routes/gameRouter.js';
-import checkoutRoutes from './routes/checkoutRoutes.js';
+import checkoutrouter from './routes/checkoutRoutes.js';
 import configurePassport from './config/passport.js';
 import router from './routes/auth.js';
 
@@ -62,9 +62,9 @@ app.use('/auth', router);
 app.use('/api/v1/users', userRouters);
 app.use('/api', crouter);
 app.use('/api/rma', RMArouter);
-app.use('/api/reviewwik', reviewrouter);
+app.use('/api/review', reviewrouter);
 app.use('/api/product', prouter);
-app.use('/api', checkoutRoutes);
+app.use('/api/checkout', checkoutrouter);
 app.use('/api/game', gameRouter);
 
 app.use('/api/invoices', invoicerouter);

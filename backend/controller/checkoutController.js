@@ -67,3 +67,30 @@ export const checkout = async (req, res) => {
         return res.status(500).json({ message: "Transaction Failed", error: error.message });
     }
 };
+
+// Get transaction by user
+export const getProductOrders = async (req, res) => {
+    try {
+        const orders = await Transaction.find({ user_id: req.user._id }).sort({createdAt: -1 });
+        res.status(200).json(orders);
+    } catch (err) {
+        res.status(500).json({ message: "Failed to fetch orders", error: err.message });
+    }
+};
+
+// Get transaction by order ID
+export const getSinglOrder = async (req, res) => {
+    try {
+        const order = await Transaction.findOne({
+            _id: req.params.id,
+            user_id: req.params._id,
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+        res.status(200).json(order);
+    } catch (err) {
+        res.status(500).json({ message: "Error retrieving order", error: err.message });
+    }
+};
