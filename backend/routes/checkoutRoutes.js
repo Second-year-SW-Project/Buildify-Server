@@ -1,9 +1,12 @@
 import express from "express";
-import { checkout, getOrders } from "../controller/checkoutController.js";
+import { protect } from "../middleware/authMiddleware.js"
+import { checkout, getOrders, getProductOrders, getSinglOrder } from "../controller/checkoutController.js";
 
-const checkrouter = express.Router();
+const checkoutrouter = express.Router();
 
-checkrouter.post("/payment", checkout);
-checkrouter.get("/payment", getOrders);
+checkoutrouter.post("/checkout", checkout);
+checkoutrouter.get("/checkout", getOrders);
+checkoutrouter.get("/product-orders", protect, getProductOrders);
+checkoutrouter.get("/order/:id", protect, getSinglOrder);
 
-export default checkrouter; // Add this line for default export
+export default checkoutrouter; 
