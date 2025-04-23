@@ -59,7 +59,7 @@ app.use('/api', crouter);
 app.use('/api/rma', RMArouter);
 app.use('/api/review', reviewrouter);
 app.use('/api/product', prouter);
-app.use('/api', checkroutes);
+app.use('/api/checkout', checkroutes);
 app.use('/api/game', gameRouter);
 
 // Handle Unmatched Routes

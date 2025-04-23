@@ -3,7 +3,7 @@ import { checkout, getOrders } from "../controller/checkoutController.js";
 
 const checkrouter = express.Router();
 
-checkrouter.post("/checkout", checkout);
-checkrouter.get("/checkout", getOrders);
+checkrouter.post("/payment", checkout);
+checkrouter.get("/payment", getOrders);
 
 export default checkrouter; // Add this line for default export
