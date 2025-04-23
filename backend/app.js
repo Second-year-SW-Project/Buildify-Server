@@ -13,9 +13,10 @@ import RMArouter from './routes/RMARoutes.js';
 import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
 import gameRouter from './routes/gameRouter.js';
-import checkroutes from './routes/checkoutRoutes.js';
+import checkoutrouter from './routes/checkoutRoutes.js';
 import configurePassport from './config/passport.js';
 import router from './routes/auth.js';
+import invoicerouter from './routes/invoiceRoutes.js';
 
 // Load environment variables
 dotenv.config({ path: './config.env' });
@@ -59,8 +60,10 @@ app.use('/api', crouter);
 app.use('/api/rma', RMArouter);
 app.use('/api/review', reviewrouter);
 app.use('/api/product', prouter);
-app.use('/api', checkroutes);
+app.use('/api/checkout', checkoutrouter);
 app.use('/api/game', gameRouter);
+
+app.use('/api/invoices', invoicerouter);
 
 // Handle Unmatched Routes
 app.all('*', (req, res, next) => {

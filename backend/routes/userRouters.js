@@ -94,7 +94,7 @@ import bcrypt from "bcryptjs";
 import authenticateJWT from "../middleware/authenticateJWT.js";
 
 // Create a new user
-router.post("/", async (req, res) => {
+router.post("/new", async (req, res) => {
   try {
     const { name, email, password, Role } = req.body;
 
