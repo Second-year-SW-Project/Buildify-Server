@@ -21,6 +21,7 @@ import gameRouter from './routes/gameRouter.js';
 import checkoutrouter from './routes/checkoutRoutes.js';
 import configurePassport from './config/passport.js';
 import router from './routes/auth.js';
+import invoicerouter from './routes/invoiceRoutes.js';
 
 // Load environment variables
 dotenv.config({ path: './config.env' });

@@ -49,6 +49,9 @@ export const checkout = async (req, res) => {
             total,
             status: "Successful",
             user_id: "12345",
+            user_name: "Test User",
+            email: "testUser@gmail.com",
+            profile_image: "../../client/public/logo.png",
             paymentIntentId: paymentIntent.id,
         });
 
@@ -67,6 +70,17 @@ export const checkout = async (req, res) => {
         return res.status(500).json({ message: "Transaction Failed", error: error.message });
     }
 };
+
+
+export const getOrders = async (req, res) => {
+    try {
+        const orders = await Transaction.find(); // Fetch all orders from the database
+        res.status(200).json({ Success: true, data: orders });
+    } catch (error) {
+        console.error("Error fetching orders:", error);
+        res.status(500).json({ message: "Failed to fetch orders" });
+    }
+}; 
 
 // Get transaction by user
 export const getProductOrders = async (req, res) => {
