@@ -108,3 +108,25 @@ export const getSinglOrder = async (req, res) => {
         res.status(500).json({ message: "Error retrieving order", error: err.message });
     }
 };
+
+// Update status by order ID 
+export const updateOrderStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const updatedOrder = await Transaction.findByIdAndUpdate(
+            id,
+            { status },
+            { new: true }
+        );
+
+        if (!updatedOrder) {
+            return res.status(404).json({ message: "Order not found"});
+        }
+        res.status(200).json({ message: "Order status updated", order: updatedOrder});
+    } catch (error) {
+        console.error("Error updating order status:", error);
+        res.status(500).json({ message: "Failed to update order status"});
+    }
+};
