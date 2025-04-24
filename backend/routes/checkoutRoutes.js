@@ -4,8 +4,8 @@ import { checkout, getOrders, getProductOrders, getSinglOrder, updateOrderStatus
 
 const checkoutrouter = express.Router();
 
-checkoutrouter.post("/checkout", checkout);
-checkoutrouter.get("/checkout", getOrders);
+checkoutrouter.post("/payment", checkout);
+checkoutrouter.get("/payment", getOrders);
 checkoutrouter.get("/product-orders", protect, getProductOrders);
 checkoutrouter.get("/order/:id", protect, getSinglOrder);
 checkoutrouter.patch("/product-orders/:id", updateOrderStatus);
