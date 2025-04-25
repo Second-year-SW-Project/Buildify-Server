@@ -13,6 +13,7 @@ import RMArouter from './routes/RMARoutes.js';
 import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
 import invoicerouter from './routes/invoiceRoutes.js';
+import commentrouter from './routes/commentRoutes.js';
 
 // Load environment variables
 dotenv.config({ path: "./config.env" });
@@ -66,6 +67,7 @@ app.use('/api/checkout', checkoutrouter);
 app.use('/api/game', gameRouter);
 
 app.use('/api/invoices', invoicerouter);
+app.use('/api/comment', commentrouter);
 
 // Handle Unmatched Routes
 app.all('*', (req, res, next) => {
