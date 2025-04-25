@@ -134,6 +134,7 @@ export const deleteReview = async (req, res) => {
 //Admin side
 
 // @desc Get all reviews (admin)
+
 export const getAllReviewsAdmin = async (req, res) => {
   try {
     const { productId, rating, userId } = req.query;
@@ -143,16 +144,37 @@ export const getAllReviewsAdmin = async (req, res) => {
     if (rating) filter.rating = rating;
     if (userId) filter.userId = userId;
 
+    // Step 1: Get all reviews with filters
     const reviews = await Review.find(filter)
-      .populate('productId', 'name')
-      .populate('userId', 'name email')
+      .populate('userId', 'name email profilePicture')
       .sort({ createdAt: -1 });
 
-    res.status(200).json(reviews);
+    // Step 2: For each review, fetch order -> find item -> extract name/category
+    const enhancedReviews = await Promise.all(
+      reviews.map(async (review) => {
+        const order = await Transaction.findById(review.orderId);
+
+        if (!order) return { ...review.toObject(), productName: null, productCategory: null };
+
+        const matchedItem = order.items.find(
+          item => item._id.toString() === review.productId.toString()
+        );
+
+        return {
+          ...review.toObject(),
+          productName: matchedItem?.name || null,
+          productCategory: matchedItem?.category || null,
+        };
+      })
+    );
+
+    res.status(200).json(enhancedReviews);
   } catch (error) {
+    console.error('Error fetching all reviews for admin:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // @desc Admin respond to a review
 export const respondToReview = async (req, res) => {
