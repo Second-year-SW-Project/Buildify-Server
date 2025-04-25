@@ -9,7 +9,7 @@ console.log("Stripe Secret Key:", process.env.STRIPE_SECRET_KEY);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // Use your Stripe test secret key
 
-// ✉️ Configure your email transporter
+//  Configure your email transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -22,9 +22,9 @@ export const checkout = async (req, res) => {
   try {
     console.log("Checkout Request Body:", req.body);
 
-    const { items, total, paymentMethodId, customerEmail, customerName } = req.body;
+    const { items, total, paymentMethodId, customerEmail, customerName,user } = req.body;
 
-    if (!Array.isArray(items) || items.length === 0 || !total || !paymentMethodId || !customerEmail) {
+    if (!Array.isArray(items) || items.length === 0 || !total || !paymentMethodId || !customerEmail ) {
       return res.status(400).json({ message: "Invalid request data" });
     }
 
@@ -34,7 +34,7 @@ export const checkout = async (req, res) => {
       }
     }
 
-    // 💳 Create Stripe payment
+    //  Create Stripe payment
     const paymentIntent = await stripe.paymentIntents.create({
       amount: total * 100,
       currency: "usd",
@@ -47,12 +47,12 @@ export const checkout = async (req, res) => {
       return res.status(400).json({ message: "Payment failed" });
     }
 
-    // 💾 Save to DB
+    // Save to DB
     const transaction = new Transaction({
       items,
       total,
       status: "Successful",
-      user_id: "12345",
+      user_id: user || "Test id",
       user_name: customerName || "Test User",
       email: customerEmail,
       profile_image: "../../client/public/logo.png",
@@ -61,7 +61,7 @@ export const checkout = async (req, res) => {
 
     await transaction.save();
 
-    // ✉️ Send confirmation email
+    //  Send confirmation email
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: customerEmail,
@@ -132,27 +132,5 @@ export const getSinglOrder = async (req, res) => {
         res.status(200).json(order);
     } catch (err) {
         res.status(500).json({ message: "Error retrieving order", error: err.message });
-    }
-};
-
-// Update status by order ID 
-export const updateOrderStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status } = req.body;
-
-        const updatedOrder = await Transaction.findByIdAndUpdate(
-            id,
-            { status },
-            { new: true }
-        );
-
-        if (!updatedOrder) {
-            return res.status(404).json({ message: "Order not found"});
-        }
-        res.status(200).json({ message: "Order status updated", order: updatedOrder});
-    } catch (error) {
-        console.error("Error updating order status:", error);
-        res.status(500).json({ message: "Failed to update order status"});
     }
 };
