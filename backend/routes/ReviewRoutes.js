@@ -14,6 +14,7 @@ reviewrouter.post("/submit", async (req, res) => {
       await review.save();
       res.status(201).json(review);
     } catch (error) {
+      console.error("Error submitting review: ", error);
       res.status(500).json({ error: error.message });
     }
   });
