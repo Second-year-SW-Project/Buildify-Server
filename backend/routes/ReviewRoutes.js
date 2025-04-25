@@ -1,94 +1,34 @@
-import { Router } from "express";
-import Review from '../model/ReviewModel.js'
+import express from 'express';
+import {
+  createReview,
+  getProductReviews,
+  getMyReviews,
+  updateReview,
+  deleteReview,
+  getAllReviewsAdmin,
+  respondToReview,
+  adminDeleteReview
+} from '../controller/reviewController.js';
+import { protect, admin } from '../middleware/authMiddleware.js';
 
-const reviewrouter = Router();
+const reviewrouter = express.Router();
 
-// Add a review
-reviewrouter.post("/submit", async (req, res) => {
-    try {
-      const { type, itemId, userId, rating, comment } = req.body;
-      if (!type || !itemId || !userId || !rating || !comment) {
-        return res.status(400).json({ error: "All fields are required" });
-      }
-      const review = new Review({ type, itemId, userId, rating, comment });
-      await review.save();
-      res.status(201).json(review);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+// Protected routes
+reviewrouter.post('/', protect, createReview); // Create review
+reviewrouter.get('/my', protect, getMyReviews); // Get my reviews
+reviewrouter.put('/:id', protect, updateReview); // Update my review
+reviewrouter.delete('/:id', protect, deleteReview); // Delete my review
 
-// Get reviews for a specific item
-reviewrouter.get("/:type/:itemId", async (req, res) => {
-    try {
-      const { type, itemId } = req.params;
-      const reviews = await Review.find({ type, itemId }).populate("userId", "name");
-      res.json(reviews);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-  
-
-// Admin gets all reviews with optional filtering
-reviewrouter.get('/admin', async (req, res) => {
-    try {
-        const { type, itemId, minRating, maxRating } = req.query;
-        
-        const query = {};
-
-        if (type) query.type = type;
-        if (itemId) query.itemID = itemId;
-        if (minRating) query.rating = { $gte: Number(minRating) };
-        if (maxRating) {
-            query.rating = query.rating
-                ? { ...query.rating, $lte: Number(maxRating) }
-                : { $lte: Number(maxRating) };
-        }
-
-        const reviews = await Review.find(query)
-            .populate("userID", "name email") // Use 'userID' instead of 'userId'
-            .populate("itemID", "name description");
-        res.json(reviews);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Admin responds to a review
-reviewrouter.post('/admin/respond/:reviewId', async (req, res) => {
-    try {
-        const { response } = req.body;
-        const { reviewId } = req.params;
-
-        if (!response) {
-            return res.status(400).json({ error: "Response is required" });
-        }
-
-        const review = await Review.findById(reviewId)
-            .populate("userID", "name email")
-            .populate("itemID", "name description");
-
-        if (!review) {
-            return res.status(404).json({ error: "Review not found" });
-        }
-
-        review.adminResponse = response;
-        await review.save();
-
-        res.json({ message: "Admin response added successfully", review });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
-    }
-});
+// Public route
+reviewrouter.get('/:productId', getProductReviews); // Get all reviews for a product
 
 
-  
+// Admin side
 
-  
+
+reviewrouter.get('/admin/all', protect, getAllReviewsAdmin);          // ✅ Get all reviews
+reviewrouter.put('/admin/respond/:id', protect, respondToReview);     // ✅ Admin respond
+reviewrouter.delete('/admin/:id', protect, adminDeleteReview);        // ✅ Delete review
 
 
 export default reviewrouter;
-

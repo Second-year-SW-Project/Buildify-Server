@@ -52,7 +52,7 @@ export const getAdminRequests = async (req, res) => {
   
       const requests = await RMA
         .find(query)
-        .populate('userId', 'name email')
+        .populate('userId', 'name email profilePicture')
         .sort({ createdAt: -1 });
   
       res.status(200).json(requests);
