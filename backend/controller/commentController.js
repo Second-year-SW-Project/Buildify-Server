@@ -87,8 +87,8 @@ export const getAllProductComments = async (req, res) => {
   
     try {
       const comments = await Comment.find()
-        .populate('userId', 'name email')
-        .populate('productId', 'name category') // product name & category
+        .populate('userId', 'name email profilePicture')
+        .populate('productId', 'name type img_urls') // product name & category
         .sort({ createdAt: -1 });
   
       if (!comments || comments.length === 0) {
