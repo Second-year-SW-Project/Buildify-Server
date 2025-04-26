@@ -1,16 +1,9 @@
 import { Router } from "express";
-import Invoice from '../model/invoiceModel.js';
+import { createInvoice, getInvoices } from "../controller/invoiceController.js";
 
 const invoicerouter = Router();
 
-invoicerouter.post("/create", async(req, res) => {
-    try{
-        const invoice = new Invoice(req.body);
-        await invoice.save();
-        res.status(201).json({ message: "Invoice saved succesfully!"});
-    } catch (err) {
-        res.status(500).json({error: err.message});
-    }
-});
+invoicerouter.post("/create", createInvoice);
+invoicerouter.get("/get", getInvoices);
 
 export default invoicerouter;

@@ -9,7 +9,7 @@ import {
   respondToReview,
   adminDeleteReview
 } from '../controller/reviewController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect} from '../middleware/authMiddleware.js';
 
 const reviewrouter = express.Router();
 
