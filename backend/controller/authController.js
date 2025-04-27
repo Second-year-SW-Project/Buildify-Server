@@ -149,6 +149,9 @@ export const login = catchAsync(async(req, res, next) => {
     }
 
     const user = await User.findOne({email}).select('+password');
+    if (user.status !== 'active') {
+      return res.status(403).json({ message: `Your account is ${user.status}` });
+    }
 
     //compare the password
 if(!user || !(await user.correctPassword(password,user.password))){
@@ -464,3 +467,28 @@ export const disable2FA = async (req, res) => {
     res.status(500).json({ message: '2FA disable failed' });
   }
 };
+
+
+
+
+export const updatestatus = async (req, res) => {
+  const { status } = req.body;  // 'active', 'blocked', 'banned', etc.
+
+  if (!['active', 'blocked', 'banned', 'inactive', 'suspended', 'pending'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(req.params.userId, { status }, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({ message: `User status updated to ${status}`, user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
