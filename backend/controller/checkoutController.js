@@ -110,27 +110,54 @@ export const getOrders = async (req, res) => {
 
 // Get transaction by user
 export const getProductOrders = async (req, res) => {
-    try {
-        const orders = await Transaction.find({ user_id: req.user._id }).sort({createdAt: -1 });
-        res.status(200).json(orders);
-    } catch (err) {
-        res.status(500).json({ message: "Failed to fetch orders", error: err.message });
+  try {
+    let filter = {};
+    if (req.query.userId) {
+      filter.user_id = req.query.userId;
+    } else {
+      filter.user_id = req.user._id;
     }
+    const orders = await Transaction.find(filter).sort({ createdAt: -1 });
+    res.status(200).json(orders);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch orders", error: err.message });
+  }
 };
 
-// Get transaction by order ID
-export const getSinglOrder = async (req, res) => {
-    try {
-        const order = await Transaction.findOne({
-            _id: req.params.id,
-            user_id: req.params._id,
-        });
 
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" });
+export const getSinglOrder = async (req, res) => {
+  try {
+    const order = await Transaction.findOne({ _id: req.params.id });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.status(200).json(order);
+  } catch (err) {
+    res.status(500).json({ message: "Error retrieving order", error: err.message });
+  }
+};
+
+
+// Update status by order ID 
+export const updateOrderStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const updatedOrder = await Transaction.findByIdAndUpdate(
+            id,
+            { status },
+            { new: true }
+        );
+
+        if (!updatedOrder) {
+            return res.status(404).json({ message: "Order not found"});
         }
-        res.status(200).json(order);
-    } catch (err) {
-        res.status(500).json({ message: "Error retrieving order", error: err.message });
+        res.status(200).json({ message: "Order status updated", order: updatedOrder});
+    } catch (error) {
+        console.error("Error updating order status:", error);
+        res.status(500).json({ message: "Failed to update order status"});
     }
 };
