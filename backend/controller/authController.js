@@ -54,12 +54,24 @@ export const signup = catchAsync(async (req, res, next) => {
     });
 
     try {
-        await sendEmail({
-            email: newUser.email,
-            subject: "OTP for Email Verification",
-            html: `<h1>Your OTP is: ${otp}</h1>`,
-        });
-
+      await sendEmail({
+        email: newUser.email,
+        subject: "🔒 Verify Your Email - Buildify",
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 30px; text-align: center;">
+            <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              <h2 style="color: #7C3AED;">Verify Your Email Address</h2>
+              <p style="font-size: 16px; color: #333;">Thank you for signing up for <strong>PC Builder</strong>!</p>
+              <p style="font-size: 16px; color: #333;">Please use the following OTP to verify your account:</p>
+              <div style="margin: 20px 0; font-size: 32px; font-weight: bold; color: #7C3AED;">${otp}</div>
+              <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes.</p>
+              <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+              <p style="font-size: 12px; color: #999;">If you did not request this, please ignore this email.</p>
+            </div>
+          </div>
+        `,
+      });
+      
         createSendToken(newUser, 200, res, "Registration successful");
     } catch (error) {
         await User.findByIdAndDelete(newUser.id);
@@ -86,6 +98,7 @@ export const verifyAccount = catchAsync(async(req, res, next)=> {
     }
 
     user.isVerified = true;
+    user.status = "active"
     user.otp= undefined;
     user.otpExpires= undefined;
 
@@ -120,11 +133,24 @@ export const resendOtp = catchAsync(async(req,res,next)=> {
     await user.save({validateBeforeSave : false});
 
     try{
-        await sendEmail({
-            email: user.email,
-            subject: "Resend otp for emsil verification",
-            html: `<h1>Your new otp is : ${newOtp}</h1>`
-        });
+      await sendEmail({
+        email: user.email,
+        subject: "🔄 Resend OTP - Buildify Email Verification",
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 30px; text-align: center;">
+            <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              <h2 style="color: #7C3AED;">Resend: Verify Your Email</h2>
+              <p style="font-size: 16px; color: #333;">You requested a new OTP for your <strong>PC Builder</strong> account.</p>
+              <p style="font-size: 16px; color: #333;">Here is your new OTP:</p>
+              <div style="margin: 20px 0; font-size: 32px; font-weight: bold; color: #7C3AED;">${newOtp}</div>
+              <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes. Please do not share it with anyone.</p>
+              <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+              <p style="font-size: 12px; color: #999;">If you did not request a new OTP, you can safely ignore this email.</p>
+            </div>
+          </div>
+        `,
+      });
+      
 
         res.status(200).json({
             status: 'success',
@@ -145,13 +171,15 @@ export const login = catchAsync(async(req, res, next) => {
     const {email,password} = req.body;
     if(!email || ! password){
         return next(new AppError("Email and password should provide", 400));
-
     }
 
+   
+  
+
     const user = await User.findOne({email}).select('+password');
-   // if (user.status !== 'active') {
-   //   return res.status(403).json({ message: `Your account is ${user.status}` });
-   // }
+  //  if (user.status === 'banned' || user.status === 'blocked') {
+  //    return res.status(403).json({ message: `Your account is ${user.status}` });
+  //  }
 
     //compare the password
 if(!user || !(await user.correctPassword(password,user.password))){
@@ -192,11 +220,24 @@ export const forgetPassword = catchAsync(async(req, res, next) => {
 
 
     try{
-        await sendEmail({
-            email: user.email,
-            subject: "Otp for reset Password",
-            html : `<h1>Otp for reset password is ${otp} </h1>`
-        });
+      await sendEmail({
+        email: user.email,
+        subject: "🔑 Password Reset OTP - Buildify",
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 30px; text-align: center;">
+            <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              <h2 style="color: #7C3AED;">Reset Your Password</h2>
+              <p style="font-size: 16px; color: #333;">You requested to reset your password for <strong>PC Builder</strong>.</p>
+              <p style="font-size: 16px; color: #333;">Please use the following OTP to proceed:</p>
+              <div style="margin: 20px 0; font-size: 32px; font-weight: bold; color: #7C3AED;">${otp}</div>
+              <p style="font-size: 14px; color: #666;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
+              <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+              <p style="font-size: 12px; color: #999;">If you did not request a password reset, you can safely ignore this email.</p>
+            </div>
+          </div>
+        `,
+      });
+      
 
         res.status(200).json({
             status: "success",
