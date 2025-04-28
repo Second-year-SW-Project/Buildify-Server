@@ -149,9 +149,9 @@ export const login = catchAsync(async(req, res, next) => {
     }
 
     const user = await User.findOne({email}).select('+password');
-    if (user.status !== 'active') {
-      return res.status(403).json({ message: `Your account is ${user.status}` });
-    }
+   // if (user.status !== 'active') {
+   //   return res.status(403).json({ message: `Your account is ${user.status}` });
+   // }
 
     //compare the password
 if(!user || !(await user.correctPassword(password,user.password))){
