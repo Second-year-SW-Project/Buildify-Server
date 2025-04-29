@@ -14,6 +14,7 @@ import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
 import invoicerouter from './routes/invoiceRoutes.js';
 import commentrouter from './routes/commentRoutes.js';
+import buildRouter from './routes/buildRouter.js';
 
 // Load environment variables
 dotenv.config({ path: "./config.env" });
@@ -65,6 +66,7 @@ app.use('/api/review', reviewrouter);
 app.use('/api/product', prouter);
 app.use('/api/checkout', checkoutrouter);
 app.use('/api/game', gameRouter);
+app.use('/api/build', buildRouter);
 
 app.use('/api/invoices', invoicerouter);
 app.use('/api/comment', commentrouter);
