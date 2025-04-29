@@ -24,7 +24,7 @@ const rmaSchema = new Schema({
     },
     message: { 
         type: String, 
-        required: true 
+       
     },
     status: {
         type: String,
