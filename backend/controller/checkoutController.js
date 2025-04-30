@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Transaction } from "../model/TransactionModel.js";
 import Stripe from "stripe";
 import dotenv from "dotenv";
@@ -47,7 +48,7 @@ export const checkout = async (req, res) => {
         const transaction = new Transaction({
             items,
             total,
-            status: "Successful",
+            status: "Pending",
             user_id: "12345",
             user_name: "Test User",
             email: "testUser@gmail.com",
@@ -74,18 +75,42 @@ export const checkout = async (req, res) => {
 
 export const getOrders = async (req, res) => {
     try {
-        const orders = await Transaction.find(); // Fetch all orders from the database
+        const orders = await Transaction.find().sort({ createdAt: -1 });; // Fetch all orders from the database
         res.status(200).json({ Success: true, data: orders });
     } catch (error) {
         console.error("Error fetching orders:", error);
         res.status(500).json({ message: "Failed to fetch orders" });
     }
-}; 
+};
+
+// Delete order by ID
+export const deleteOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ Success: false, message: 'Invalid Order ID' });
+        }
+
+        const existingOrder = await Transaction.findByIdAndDelete(id);
+        if (!existingOrder) {
+            return res.status(404).json({ Success: false, message: 'Order not found' });
+        }
+
+        res.status(200).json({
+            Success: true,
+            message: `Order With #${existingOrder.id.slice(-4).toUpperCase()} Id Deleted Successfully`,
+        });
+    } catch (error) {
+        console.error("Error deleting order:", error);
+        return res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
+    }
+}
 
 // Get transaction by user
 export const getProductOrders = async (req, res) => {
     try {
-        const orders = await Transaction.find({ user_id: req.user._id }).sort({createdAt: -1 });
+        const orders = await Transaction.find({ user_id: req.user._id }).sort({ createdAt: -1 });
         res.status(200).json(orders);
     } catch (err) {
         res.status(500).json({ message: "Failed to fetch orders", error: err.message });
