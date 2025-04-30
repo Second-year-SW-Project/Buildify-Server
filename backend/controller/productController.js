@@ -1,15 +1,35 @@
 import mongoose from 'mongoose';
 import Product from '../model/productModel.js';
-import { toCamelCase, toSnakeCase } from '../middleware/camelToSnakeMiddleware.js';
+import { toSnakeCase } from '../middleware/camelToSnakeMiddleware.js';
+import { toCamelCase } from '../middleware/snakeToCamelMiddleware.js';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Clean the object by removing null or empty values
-const cleanObject = (obj) => {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([_, value]) => value !== null && value !== '' && value !== undefined)
-  );
-};
+function cleanObject(obj) {
+  const cleaned = {};
 
+  for (const key in obj) {
+    const value = obj[key];
+
+    // Skip undefined, null, empty strings
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      // Skip empty arrays
+      if (value.length === 0) {
+        continue;
+      }
+    }
+
+    cleaned[key] = value;
+  }
+
+  return cleaned;
+}
+
+// Create a new product
 export const createProduct = async (req, res) => {
   try {
     let product;
@@ -30,6 +50,7 @@ export const createProduct = async (req, res) => {
       req.files.image4?.[0],
     ].filter((item) => item !== undefined);
 
+    // Validate images
     let imagesUrl = [];
     if (images.length > 0) {
       try {
@@ -41,6 +62,7 @@ export const createProduct = async (req, res) => {
                 resource_type: 'image',
               });
               return {
+                // Extracting public_id and url from the result
                 public_id: result.public_id,
                 url: result.secure_url,
               };
@@ -56,166 +78,29 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    // Define allowed fields for each product type
-    const allowedFieldsByType = {
-      processor: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'socket_type', 'tdp', 'core_count', 'thread_count', 'base_clock',
-        'boost_clock', 'integrated_graphics', 'includes_cooler', 'img_urls'
-      ],
-      cooling: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'cooler_type', 'supported_socket', 'max_tdp', 'height', 'tdp', 'img_urls'
-      ],
-      motherboard: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'socket_type', 'motherboard_chipset', 'form_factor', 'ram_slots',
-        'max_ram', 'supported_memory_types', 'pcie_slots', 'storage_interfaces',
-        'tdp', 'img_urls'
-      ],
-      ram: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'memory_type', 'memory_capacity', 'memory_speed', 'tdp', 'img_urls'
-      ],
-      storage: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'storage_type', 'storage_capacity', 'tdp', 'img_urls'
-      ],
-      gpu: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'interface_type', 'tdp', 'length', 'power_connectors', 'vram',
-        'gpu_chipset', 'gpu_cores', 'img_urls'
-      ],
-      casing: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'form_factor', 'supported_motherboard_sizes', 'max_gpu_length',
-        'max_cooler_height', 'img_urls'
-      ],
-      power: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'wattage', 'efficiency_rating', 'modular_type', 'img_urls'
-      ],
-      laptop: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'display_size', 'resolution', 'cpu', 'ram', 'storage', 'graphic_card',
-        'laptop_type', 'img_urls'
-      ],
-      prebuild: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'cpu', 'cpu_cores', 'cpu_threads', 'cpu_base_clock', 'cpu_boost_clock',
-        'graphic_card', 'gpu_series', 'gpu_vram_gb', 'gpu_boost_clock_mhz',
-        'gpu_cores', 'ram_size_gb', 'ram_speed_mhz', 'ram_type', 'storage',
-        'desktop_type', 'img_urls'
-      ],
-      expansion_network: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'component_type', 'sound_card_channels', 'network_speed', 'wifi_standard',
-        'interface_type', 'img_urls'
-      ],
-      default: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price', 'img_urls'
-      ],
-    };
-
-    // Filter product object to include only allowed fields for the product type
-    const productType = product.type || 'default';
-    const allowedFields = allowedFieldsByType[productType] || allowedFieldsByType.default;
-    const filteredProduct = Object.fromEntries(
-      Object.entries(product).filter(([key]) => allowedFields.includes(key))
-    );
-
-    // Add images to filtered product
-    filteredProduct.img_urls = imagesUrl;
-
-    // Validation for required fields by type
-    const requiredFields = {
-      processor: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'socket_type', 'tdp', 'core_count', 'thread_count', 'base_clock', 'boost_clock'
-      ],
-      cooling: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'cooler_type', 'supported_socket', 'max_tdp', 'height', 'tdp'
-      ],
-      motherboard: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'socket_type', 'motherboard_chipset', 'form_factor', 'ram_slots',
-        'max_ram', 'supported_memory_types', 'pcie_slots', 'storage_interfaces', 'tdp'
-      ],
-      ram: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'memory_type', 'memory_capacity', 'memory_speed', 'tdp'
-      ],
-      storage: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'storage_type', 'storage_capacity', 'tdp'
-      ],
-      gpu: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'interface_type', 'tdp', 'length', 'power_connectors', 'vram', 'gpu_chipset'
-      ],
-      casing: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'form_factor', 'supported_motherboard_sizes', 'max_gpu_length', 'max_cooler_height'
-      ],
-      power: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'wattage', 'efficiency_rating', 'modular_type'
-      ],
-      laptop: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'display_size', 'resolution', 'cpu', 'ram', 'storage', 'graphic_card'
-      ],
-      prebuild: [
-        'type', 'name', 'description', 'manufacturer', 'quantity', 'price',
-        'cpu', 'cpu_cores', 'cpu_threads', 'cpu_base_clock', 'cpu_boost_clock',
-        'graphic_card', 'gpu_series', 'gpu_vram_gb', 'gpu_boost_clock_mhz',
-        'gpu_cores', 'ram_size_gb', 'ram_speed_mhz', 'ram_type', 'storage', 'desktop_type'
-      ],
-      expansion_network: ['type', 'name', 'description', 'manufacturer', 'quantity', 'price'],
-      default: ['type', 'name', 'description', 'manufacturer', 'quantity', 'price'],
-    };
-
-    if (productType === 'expansion_network') {
-      if (filteredProduct.component_type === 'sound_card') {
-        requiredFields.expansion_network.push('sound_card_channels');
-      } else if (filteredProduct.component_type === 'wired_network_adapter') {
-        requiredFields.expansion_network.push('network_speed');
-      } else if (filteredProduct.component_type === 'wireless_network_adapter') {
-        requiredFields.expansion_network.push('wifi_standard');
-      }
-    }
-
-    const fieldsToCheck = requiredFields[productType] || requiredFields.default;
-    const missingFields = fieldsToCheck.filter((field) => {
-      if (field === 'img_urls') return imagesUrl.length === 0;
-      if (['supported_socket', 'supported_memory_types', 'power_connectors', 'supported_motherboard_sizes', 'pcie_slots', 'storage_interfaces'].includes(field)) {
-        return !filteredProduct[field] || filteredProduct[field].length === 0;
-      }
-      return !filteredProduct[field];
+    //Add images to product object
+    const newProduct = new Product({
+      ...product,
+      img_urls: imagesUrl,
     });
 
-    if (missingFields.length > 0 || imagesUrl.length === 0) {
-      return res.status(400).json({
-        Success: false,
-        message: `Please provide all required fields: ${missingFields.join(', ')}${imagesUrl.length === 0 ? ', images' : ''}`,
-      });
-    }
-
-    const newProduct = new Product(filteredProduct);
+    //Save product to database
     await newProduct.save();
     res.status(201).json({ Success: true, data: toCamelCase(newProduct.toObject()) });
+
   } catch (error) {
     console.error('Error in createProduct:', error.message, error.stack);
     res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
   }
 };
 
+// Get all products
 export const getProducts = async (req, res) => {
   try {
     const { search } = req.query;
     const query = {};
 
+    // Check if the search query is provided
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -230,7 +115,10 @@ export const getProducts = async (req, res) => {
       ];
     }
 
-    const products = await Product.find(query);
+
+    const products = await Product.find(query).sort({ updatedAt: 1 });
+
+    //Map through the products and convert to camelCase
     const formattedProducts = products.map((product) => {
       const productObj = product.toObject();
       return {
@@ -240,16 +128,22 @@ export const getProducts = async (req, res) => {
         updatedAt: productObj.updatedAt,
       };
     });
+
     res.status(200).json({ Success: true, data: formattedProducts });
+
   } catch (error) {
     console.error('Error in getProducts:', error.message, error.stack);
     res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
   }
 };
 
+// Update a product
 export const updateProduct = async (req, res) => {
   try {
+
     let product = JSON.parse(req.body.product || '{}');
+
+    //Initialize images
     const images = [
       req.files.image1?.[0],
       req.files.image2?.[0],
@@ -271,40 +165,48 @@ export const updateProduct = async (req, res) => {
       );
     }
 
-    // Remove _id from product payload
-    delete product._id;
+    // Clean the empty attributes from the product object
+    const cleanedProduct = cleanObject(product);
+
+    // Remove _id from product payload to update
+    delete cleanedProduct._id;
 
     // Update product
     const updatedProduct = await Product.findOneAndUpdate(
       { _id: req.params.id },
-      { ...product, ...(imagesUrl.length > 0 && { img_urls: imagesUrl }) },
+      { ...cleanedProduct, ...(imagesUrl.length > 0 && { img_urls: imagesUrl }) },
       { new: true, runValidators: true }
     );
 
     if (!updatedProduct) {
       return res.status(404).json({ Success: false, message: 'Product not found' });
     }
-
     res.status(200).json({ Success: true, data: toCamelCase(updatedProduct.toObject()) });
+
   } catch (error) {
     console.error('Error in updateProduct:', error.message);
     res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
   }
 };
 
+// Delete a product
 export const deleteProduct = async (req, res) => {
   try {
+
     const { id } = req.params;
 
+    // Check if ID is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ Success: false, message: 'Invalid product ID' });
     }
 
+    // Find and delete the product
     const existingProduct = await Product.findByIdAndDelete(id);
     if (!existingProduct) {
       return res.status(404).json({ Success: false, message: 'Product not found' });
     }
 
+    // Delete images from Cloudinary
     if (existingProduct.img_urls?.length) {
       try {
         await Promise.all(
@@ -319,7 +221,6 @@ export const deleteProduct = async (req, res) => {
         // Continue with deletion even if image cleanup fails
       }
     }
-
     res.status(200).json({
       Success: true,
       message: `${existingProduct.type} Deleted Successfully`,
@@ -415,12 +316,12 @@ export const getProductById = async (req, res) => {
     // Fetch product
     const s_product = await Product.findById(id);
     if (!s_product) {
-      console.log(`Product not found for ID: ${id}`);
+      // console.log(`Product not found for ID: ${id}`);
       return res.status(404).json({ Success: false, message: `Product not found for ID: ${id}` });
     }
 
     // Convert to camelCase
-    console.log('Converting product to camelCase:', s_product._id.toString());
+    // console.log('Converting product to camelCase:', s_product._id.toString());
     const camelCasedProduct = toCamelCase(s_product.toObject());
 
     res.status(200).json({ Success: true, ...camelCasedProduct, _id: s_product._id, });
