@@ -26,7 +26,7 @@ reviewrouter.get('/:productId', getProductReviews); // Get all reviews for a pro
 // Admin side
 
 
-reviewrouter.get('/admin/all', protect, getAllReviewsAdmin);          // ✅ Get all reviews
+reviewrouter.get('/admin/all', getAllReviewsAdmin);          // ✅ Get all reviews
 reviewrouter.put('/admin/respond/:id', protect, respondToReview);     // ✅ Admin respond
 reviewrouter.delete('/admin/:id', protect, adminDeleteReview);        // ✅ Delete review
 

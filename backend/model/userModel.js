@@ -72,6 +72,11 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "user"],
       default: "user",
     },
+    status: {
+      type: String,
+      enum: ['active', 'blocked', 'banned', 'inactive', 'suspended', 'pending'],
+      default: 'pending',
+    },
     twoFASecret: {
       type: String
     },

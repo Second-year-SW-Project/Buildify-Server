@@ -2,7 +2,8 @@ import express from "express";
 import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,
   generate2FASecret,
   enable2FA,
-  disable2FA } from "../controller/authController.js";
+  disable2FA, 
+  updatestatus} from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -25,6 +26,7 @@ router.post('/change-password', authenticateForPassword, changePassword);
 router.post('/2fa/generate',isAuthenticated, generate2FASecret);
 router.post('/2fa/enable', isAuthenticated, enable2FA);
 router.post('/2fa/disable', isAuthenticated, disable2FA);
+router.put('/update-status/:userId',isAuthenticated,updatestatus);
 
 
 
