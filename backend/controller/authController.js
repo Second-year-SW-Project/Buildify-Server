@@ -4,14 +4,23 @@ import jwt from 'jsonwebtoken';
 import sendEmail from "../utils/email.js";
 import {catchAsync} from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
 
+
+
+//creating the token based on user id
 const signToken = (id) => {
+
     return jwt.sign({ id }, process.env.JWT_SECRET, { 
         expiresIn: process.env.JWT_EXPIRES_IN 
     });
+
 };
 
+//creating through another function and send to cookies
 const createSendToken = (user, statusCode, res, message) => {
+
     const token = signToken(user._id);
 
     const cookieOptions = {
@@ -35,6 +44,7 @@ const createSendToken = (user, statusCode, res, message) => {
     });
 };
 
+//signup with sending token to verify the account
 export const signup = catchAsync(async (req, res, next) => {
     const { email, password, passwordConfirm,name } = req.body;
 
@@ -42,7 +52,7 @@ export const signup = catchAsync(async (req, res, next) => {
     if (existingUser) return next(new AppError("Email already registered", 400));
 
     const otp = generateOtp();
-    const otpExpires = Date.now() + 24 * 60 * 60 * 1000; // Fixed expiration time
+    const otpExpires = Date.now() + 24 * 60 * 60 * 1000;
 
     const newUser = await User.create({
         name,
@@ -61,7 +71,7 @@ export const signup = catchAsync(async (req, res, next) => {
           <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 30px; text-align: center;">
             <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
               <h2 style="color: #7C3AED;">Verify Your Email Address</h2>
-              <p style="font-size: 16px; color: #333;">Thank you for signing up for <strong>PC Builder</strong>!</p>
+              <p style="font-size: 16px; color: #333;">Thank you for signing up for <strong>Buildify</strong>!</p>
               <p style="font-size: 16px; color: #333;">Please use the following OTP to verify your account:</p>
               <div style="margin: 20px 0; font-size: 32px; font-weight: bold; color: #7C3AED;">${otp}</div>
               <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes.</p>
@@ -79,7 +89,7 @@ export const signup = catchAsync(async (req, res, next) => {
     }
 });
 
-
+//Verify the account
 export const verifyAccount = catchAsync(async(req, res, next)=> {
 
     const {otp} = req.body;
@@ -108,6 +118,7 @@ export const verifyAccount = catchAsync(async(req, res, next)=> {
 
 })
 
+//asking to resend otp in verify or forgot password and reetting
 export const resendOtp = catchAsync(async(req,res,next)=> {
     const {email} = req.user;
     if(!email){
@@ -140,7 +151,7 @@ export const resendOtp = catchAsync(async(req,res,next)=> {
           <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 30px; text-align: center;">
             <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
               <h2 style="color: #7C3AED;">Resend: Verify Your Email</h2>
-              <p style="font-size: 16px; color: #333;">You requested a new OTP for your <strong>PC Builder</strong> account.</p>
+              <p style="font-size: 16px; color: #333;">You requested a new OTP for your <strong>Buildify</strong> account.</p>
               <p style="font-size: 16px; color: #333;">Here is your new OTP:</p>
               <div style="margin: 20px 0; font-size: 32px; font-weight: bold; color: #7C3AED;">${newOtp}</div>
               <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes. Please do not share it with anyone.</p>
@@ -166,15 +177,13 @@ export const resendOtp = catchAsync(async(req,res,next)=> {
     }
 });
 
+//login after verification done
 export const login = catchAsync(async(req, res, next) => {
     
     const {email,password} = req.body;
     if(!email || ! password){
         return next(new AppError("Email and password should provide", 400));
     }
-
-   
-  
 
     const user = await User.findOne({email}).select('+password');
   //  if (user.status === 'banned' || user.status === 'blocked') {
@@ -192,6 +201,7 @@ createSendToken(user,200, res, "Logged in successfully")
 
 });
 
+//logged out
 export const logout = catchAsync(async(req, res, next)=>{
     res.cookie("token", "loggedout",{
         expires: new Date(Date.now() + 10 * 1000 ),
@@ -205,6 +215,7 @@ res.status(200).json({
 })
 });
 
+//Foregtting password
 export const forgetPassword = catchAsync(async(req, res, next) => {
     const {email} = req.body;
     const user = await User.findOne({email});
@@ -227,7 +238,7 @@ export const forgetPassword = catchAsync(async(req, res, next) => {
           <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 30px; text-align: center;">
             <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
               <h2 style="color: #7C3AED;">Reset Your Password</h2>
-              <p style="font-size: 16px; color: #333;">You requested to reset your password for <strong>PC Builder</strong>.</p>
+              <p style="font-size: 16px; color: #333;">You requested to reset your password for <strong>Buildify</strong>.</p>
               <p style="font-size: 16px; color: #333;">Please use the following OTP to proceed:</p>
               <div style="margin: 20px 0; font-size: 32px; font-weight: bold; color: #7C3AED;">${otp}</div>
               <p style="font-size: 14px; color: #666;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
@@ -254,6 +265,7 @@ export const forgetPassword = catchAsync(async(req, res, next) => {
     }
 });
 
+//resetting password
 export const resetPassword = catchAsync(async(req, res, next) => {
     const{email, otp, password, passwordConfirm} = req.body;
 
@@ -282,6 +294,7 @@ export const resetPassword = catchAsync(async(req, res, next) => {
 
 })
 
+//update the profile in user profie
 export const updateProfile = async (req, res) => {
     try {
       // Allowed fields validation
@@ -331,11 +344,7 @@ export const updateProfile = async (req, res) => {
     }
   };
 
-
-import bcrypt  from 'bcryptjs';
-import speakeasy from 'speakeasy';
-import QRCode from 'qrcode';
-
+//changing current password
 export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -398,12 +407,7 @@ export const changePassword = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
+//2fa still not debug
 export const generate2FASecret = async (req, res) => {
   try {
     const user = req.user;
@@ -446,8 +450,6 @@ export const generate2FASecret = async (req, res) => {
     res.status(500).json({ message: 'Failed to generate 2FA secret' });
   }
 };
-
-
 
 export const enable2FA = async (req, res) => {
   try {
@@ -492,9 +494,6 @@ export const enable2FA = async (req, res) => {
   }
 };
 
-
-
-
 export const disable2FA = async (req, res) => {
   try {
     const user = req.user;
@@ -509,9 +508,7 @@ export const disable2FA = async (req, res) => {
   }
 };
 
-
-
-
+//updating status by admin in user management
 export const updatestatus = async (req, res) => {
   const { status } = req.body;  // 'active', 'blocked', 'banned', etc.
 
