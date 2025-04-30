@@ -22,8 +22,7 @@ const ReviewSchema = new Schema({
         required: true
     },
     comment: {
-        type: String,
-        required: true
+        type: String        
     },
     adminResponse: {  
         type: String,
