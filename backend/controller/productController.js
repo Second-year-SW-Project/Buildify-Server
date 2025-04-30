@@ -150,11 +150,29 @@ export const updateProduct = async (req, res) => {
       req.files.image3?.[0],
       req.files.image4?.[0],
     ].filter(Boolean);
-    let imagesUrl = [];
 
-    // Handle image uploads
+    // Clean the empty attributes from the product object
+    const cleanedProduct = cleanObject(product);
+    delete cleanedProduct._id;
+
+    // Fetch the existing product
+    const existingProduct = await Product.findById(req.params.id);
+    if (!existingProduct) {
+      return res.status(404).json({ Success: false, message: 'Product not found' });
+    }
+
+    let imagesUrl = [...(existingProduct.img_urls || [])];
+
     if (images.length > 0) {
-      imagesUrl = await Promise.all(
+
+      //Destroy the existing images
+      const imagesToDelete = imagesUrl.slice(0, images.length);
+      await Promise.all(
+        imagesToDelete.map(img => cloudinary.uploader.destroy(img.public_id))
+      );
+
+      //Upload new images
+      const newImages = await Promise.all(
         images.map(async (item) => {
           const result = await cloudinary.uploader.upload(item.path, {
             folder: 'Products',
@@ -163,24 +181,19 @@ export const updateProduct = async (req, res) => {
           return { public_id: result.public_id, url: result.secure_url };
         })
       );
+
+      //Replace existing images with new ones
+      imagesUrl.splice(0, images.length, ...newImages);
+
     }
 
-    // Clean the empty attributes from the product object
-    const cleanedProduct = cleanObject(product);
-
-    // Remove _id from product payload to update
-    delete cleanedProduct._id;
-
-    // Update product
+    //Update product
     const updatedProduct = await Product.findOneAndUpdate(
       { _id: req.params.id },
-      { ...cleanedProduct, ...(imagesUrl.length > 0 && { img_urls: imagesUrl }) },
+      { ...cleanedProduct, img_urls: imagesUrl },
       { new: true, runValidators: true }
     );
 
-    if (!updatedProduct) {
-      return res.status(404).json({ Success: false, message: 'Product not found' });
-    }
     res.status(200).json({ Success: true, data: toCamelCase(updatedProduct.toObject()) });
 
   } catch (error) {
