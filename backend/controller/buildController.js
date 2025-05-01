@@ -7,10 +7,17 @@ const addBuild = async (req, res) => {
     const buildData = req.body;
     
     // Log incoming data for debugging
-    console.log('Received build data:', buildData);
+    console.log('Received build data:', JSON.stringify(buildData, null, 2));
     
     // Validate required fields
     if (!buildData.name || !buildData.type || !buildData.image || !buildData.components || !buildData.totalPrice) {
+      console.log('Missing required fields:', {
+        name: !buildData.name,
+        type: !buildData.type,
+        image: !buildData.image,
+        components: !buildData.components,
+        totalPrice: !buildData.totalPrice
+      });
       return res.status(400).json({ 
         success: false, 
         message: 'Missing required fields',
@@ -26,35 +33,59 @@ const addBuild = async (req, res) => {
 
     // Validate components array
     if (!Array.isArray(buildData.components)) {
+      console.log('Invalid components format:', buildData.components);
       return res.status(400).json({ 
         success: false, 
         message: 'Components must be an array' 
       });
     }
 
+    // Validate each component
+    const invalidComponents = buildData.components.filter(component => {
+      const missingFields = [];
+      if (!component.componentName) missingFields.push('componentName');
+      if (!component.type) missingFields.push('type');
+      if (!component.price) missingFields.push('price');
+      if (!component.image) missingFields.push('image');
+      if (!component._id) missingFields.push('_id');
+      return missingFields.length > 0;
+    });
+
+    if (invalidComponents.length > 0) {
+      console.log('Invalid components found:', invalidComponents);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid component data',
+        invalidComponents
+      });
+    }
+
     // Process components to handle duplicates
     const processedComponents = buildData.components.reduce((acc, component) => {
-      // Find if this component already exists in the accumulator
-      const existingComponent = acc.find(c => 
-        c.componentName === component.componentName && 
-        c.type === component.type && 
-        c._id.toString() === component._id.toString()
-      );
+      try {
+        // Find if this component already exists in the accumulator
+        const existingComponent = acc.find(c => 
+          c.componentName === component.componentName && 
+          c.type === component.type && 
+          c._id.toString() === component._id.toString()
+        );
 
-      if (existingComponent) {
-        // If component exists, increment quantity
-        existingComponent.quantity += 1;
-        // Keep the original price per unit
-        existingComponent.price = component.price;
-      } else {
-        // If component doesn't exist, add it with quantity 1
-        acc.push({
-          ...component,
-          quantity: 1,
-          price: component.price // Keep original price
-        });
+        if (existingComponent) {
+          // If component exists, increment quantity
+          existingComponent.quantity += 1;
+          // Keep the original price per unit
+          existingComponent.price = component.price;
+        } else {
+          // If component doesn't exist, add it with quantity 1
+          acc.push({
+            ...component,
+            quantity: 1,
+            price: component.price // Keep original price
+          });
+        }
+      } catch (error) {
+        console.error('Error processing component:', component, error);
       }
-
       return acc;
     }, []);
 
@@ -70,10 +101,21 @@ const addBuild = async (req, res) => {
       totalPrice: totalPrice
     };
 
-    // Create new build
-    const newBuild = await buildModel.create(processedBuildData);
-    
-    res.status(201).json({ success: true, message: 'Build added successfully', build: newBuild });
+    console.log('Processed build data:', JSON.stringify(processedBuildData, null, 2));
+
+    try {
+      // Create new build
+      const newBuild = await buildModel.create(processedBuildData);
+      console.log('Build created successfully:', newBuild);
+      res.status(201).json({ success: true, message: 'Build added successfully', build: newBuild });
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Database error while saving build',
+        error: dbError.message
+      });
+    }
   } catch (error) {
     console.error('Error in addBuild:', error);
     res.status(500).json({ 
