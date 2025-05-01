@@ -83,6 +83,7 @@ const updateGames = async (req, res) => {
         if (updateData.gpu) updateData.gpu = parseJSON(updateData.gpu);
         if (updateData.ram) updateData.ram = parseJSON(updateData.ram);
 
+        //Update image if provided
         if (req.file) {
             const existingGame = await gameModel.findById(id);
             if (existingGame?.imagePublicId) {
