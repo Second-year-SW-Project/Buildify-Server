@@ -112,12 +112,15 @@ export const getOrders = async (req, res) => {
 // Delete order by ID
 export const deleteOrder = async (req, res) => {
     try {
+        //Extract order ID from request parameters
         const { id } = req.params;
 
+        // Check if the ID is a valid 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ Success: false, message: 'Invalid Order ID' });
         }
 
+        // Find and delete the order by ID
         const existingOrder = await Transaction.findByIdAndDelete(id);
         if (!existingOrder) {
             return res.status(404).json({ Success: false, message: 'Order not found' });
@@ -127,6 +130,7 @@ export const deleteOrder = async (req, res) => {
             Success: true,
             message: `Order With #${existingOrder.id.slice(-4).toUpperCase()} Id Deleted Successfully`,
         });
+
     } catch (error) {
         console.error("Error deleting order:", error);
         return res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
