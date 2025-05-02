@@ -14,12 +14,12 @@ import reviewrouter from './routes/ReviewRoutes.js';
 import prouter from './routes/productRoutes.js';
 import invoicerouter from './routes/invoiceRoutes.js';
 import commentrouter from './routes/commentRoutes.js';
-import buildRouter from './routes/buildRouter.js';
+import buildRouter from './routes/buildRouter.js';//importing the build router
 
 // Load environment variables
 dotenv.config({ path: "./config.env" });
 
-import gameRouter from './routes/gameRouter.js';
+import gameRouter from './routes/gameRouter.js';//importing the game router
 import checkoutrouter from './routes/checkoutRoutes.js';
 import configurePassport from './config/passport.js';
 import router from './routes/auth.js';
