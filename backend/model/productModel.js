@@ -120,7 +120,7 @@ const productSchema = new mongoose.Schema(
     toJSON: {
       virtuals: true,
       transform: (doc, ret) => {
-        delete ret._id;
+        ret._id = ret._id.toString();
         delete ret.__v;
         return toCamelCase(ret);
       }

@@ -13,8 +13,8 @@ import upload from '../middleware/multer.js';
 
 const prouter = express.Router();
 
-prouter.post(
-  '/add',
+//Create a new product
+prouter.post('/add',
   upload.fields([
     { name: 'image1', maxCount: 1 },
     { name: 'image2', maxCount: 1 },
@@ -24,16 +24,31 @@ prouter.post(
   camelToSnakeMiddleware,
   createProduct
 );
+//Update a product
+prouter.put('/:id',
+  upload.fields([
+    { name: 'image1', maxCount: 1 },
+    { name: 'image2', maxCount: 1 },
+    { name: 'image3', maxCount: 1 },
+    { name: 'image4', maxCount: 1 },
+  ]),
+  camelToSnakeMiddleware,
+  updateProduct
+);
+
+//Get all products with queries
 prouter.get('/all', getProducts);
+
+//Get products by search
 prouter.get('/search', getProductsBySearch);
+
+//Get products by attribute
 prouter.get('/filter', getProductsByAttribute);
+
+//Get products by id
 prouter.get('/:id', getProductById);
-prouter.put('/:id', upload.fields([
-  { name: 'image1', maxCount: 1 },
-  { name: 'image2', maxCount: 1 },
-  { name: 'image3', maxCount: 1 },
-  { name: 'image4', maxCount: 1 },
-]), camelToSnakeMiddleware, updateProduct);
+
+//Delete a product
 prouter.delete('/:id', deleteProduct);
 
 export default prouter;
