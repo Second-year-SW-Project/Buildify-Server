@@ -1,7 +1,6 @@
 import express from 'express';
 import {
   createProduct,
-  getProductsBySearch,
   getProductsByAttribute,
   getProductById,
   deleteProduct,
@@ -38,9 +37,6 @@ prouter.put('/:id',
 
 //Get all products with queries
 prouter.get('/all', getProducts);
-
-//Get products by search
-prouter.get('/search', getProductsBySearch);
 
 //Get products by attribute
 prouter.get('/filter', getProductsByAttribute);

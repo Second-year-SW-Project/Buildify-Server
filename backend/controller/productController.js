@@ -97,24 +97,36 @@ export const createProduct = async (req, res) => {
 // Get all products
 export const getProducts = async (req, res) => {
   try {
-    // Extract search query and initialize query object
-    const { search } = req.query;
-    const query = {};
+    // Extract search query and pagination parameters
+    const { search, query, page = 1, limit = 5 } = req.query;
+    const searchQuery = search || query; // Support both search and query parameters
+    const queryObj = {};
 
     // Check if the search query is provided
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { type: { $regex: search, $options: 'i' } },
-        { manufacturer: { $regex: search, $options: 'i' } },
-        { motherboard_chipset: { $regex: search, $options: 'i' } },
-        { gpu_chipset: { $regex: search, $options: 'i' } },
-        { cooler_type: { $regex: search, $options: 'i' } },
-        { storage_type: { $regex: search, $options: 'i' } },
+    if (searchQuery) {
+      queryObj.$or = [
+        { name: { $regex: searchQuery, $options: 'i' } },
+        { type: { $regex: searchQuery, $options: 'i' } },
+        { manufacturer: { $regex: searchQuery, $options: 'i' } },
+        { motherboard_chipset: { $regex: searchQuery, $options: 'i' } },
+        { gpu_chipset: { $regex: searchQuery, $options: 'i' } },
+        { cooler_type: { $regex: searchQuery, $options: 'i' } },
+        { storage_type: { $regex: searchQuery, $options: 'i' } },
+        { description: { $regex: searchQuery, $options: 'i' } }
       ];
     }
 
-    const products = await Product.find(query).sort({ updatedAt: 1 });
+    // Calculate skip value for pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get total count of products
+    const totalProducts = await Product.countDocuments(queryObj);
+
+    // Get paginated products
+    const products = await Product.find(queryObj)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
     //Map through the products and convert to camelCase
     const formattedProducts = products.map((product) => {
@@ -127,7 +139,15 @@ export const getProducts = async (req, res) => {
       };
     });
 
-    res.status(200).json({ Success: true, data: formattedProducts });
+    res.status(200).json({
+      Success: true, data: formattedProducts,
+      pagination: {
+        total: totalProducts, // Total number of products
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(totalProducts / parseInt(limit)) //Round up to the nearest whole number
+      }
+    });
 
   } catch (error) {
     console.error('Error in getProducts:', error.message, error.stack); // Debugging
@@ -240,46 +260,6 @@ export const deleteProduct = async (req, res) => {
   } catch (error) {
     console.error('Error in deleteProduct:', error.message, error.stack);// Debugging
     res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
-  }
-};
-
-// Get products by search
-export const getProductsBySearch = async (req, res) => {
-  try {
-    // Extract search query from request
-    const query = req.query.query;
-    if (!query) {
-      return res.status(400).json({ message: "Query parameter is required" });
-    }
-
-    console.log("Search query:", query); // Debugging
-
-    // Check if the query is provided
-    const products = await Product.find({
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-        { type: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } }
-      ],
-    });
-
-    console.log("Found products:", products); // Debugging
-
-    //Convert to camelCase and format the response
-    const formattedProducts = products.map((product) => {
-      const productObj = product.toObject();
-      const camelCasedProduct = toCamelCase(productObj);
-
-      return {
-        ...camelCasedProduct,
-        _id: productObj._id,
-      }
-    });
-
-    res.json(formattedProducts);
-  } catch (error) {
-    console.error("Search error:", error);// Debugging
-    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
