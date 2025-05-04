@@ -98,9 +98,48 @@ export const createProduct = async (req, res) => {
 export const getProducts = async (req, res) => {
   try {
     // Extract search query and pagination parameters
-    const { search, query, page = 1, limit = 5 } = req.query;
+    const {
+      search,
+      query,
+      page = 1,
+      limit = 5,
+      statusFilter,
+      date,
+      subCategory
+    } = req.query;
     const searchQuery = search || query; // Support both search and query parameters
     const queryObj = {};
+
+    // Add status filter
+    if (statusFilter) {
+      switch (statusFilter) {
+        case 'In Stock':
+          queryObj.quantity = { $gt: 5 };
+          break;
+        case 'Low Stock':
+          queryObj.quantity = { $gt: 0, $lte: 5 };
+          break;
+        case 'Out of Stock':
+          queryObj.quantity = 0;
+          break;
+      }
+    }
+    // Add date filter
+    if (date) {
+      const filterDate = new Date(date);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      // Filter products updated within the date range
+      queryObj.updatedAt = {
+        $gte: filterDate,
+        $lt: nextDay
+      };
+    }
+    // Add category filters
+    if (subCategory) {
+      queryObj.type = subCategory;
+    }
 
     // Check if the search query is provided
     if (searchQuery) {
