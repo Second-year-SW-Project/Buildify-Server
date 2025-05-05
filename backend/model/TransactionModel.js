@@ -10,6 +10,8 @@ const transactionSchema = new mongoose.Schema({
     total: Number,
     status: String,
     user_id: String,
+    user_name: String,
+    email: String,
     createdAt: {
         type: Date,
         default: Date.now,
