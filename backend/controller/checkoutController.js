@@ -110,9 +110,15 @@ export const getOrders = async (req, res) => {
             orderId,
             page = 1,
             limit = 5,
+            status
         } = req.query;
         const searchQuery = search || query; // Support both search and query parameters
         const queryObj = {};
+
+        // Add status filter if provided
+        if (status && status !== 'All') {
+            queryObj.status = status;
+        }
 
         // Add Order ID search 
         if (orderId) {
@@ -141,6 +147,7 @@ export const getOrders = async (req, res) => {
                 { status: { $regex: searchQuery, $options: 'i' } }
             ];
         }
+
         // Add date filter
         if (date) {
             const filterDate = new Date(date);
@@ -153,6 +160,23 @@ export const getOrders = async (req, res) => {
                 $lt: nextDay
             };
         }
+
+        // Get status counts
+        const statusCounts = await Transaction.aggregate([
+            {
+                // Match the query object
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Convert status counts to object
+        const statusCountsObj = statusCounts.reduce((acc, curr) => {
+            acc[curr._id] = curr.count;
+            return acc;
+        }, {});
 
         // Calculate skip value for pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -241,7 +265,8 @@ export const getOrders = async (req, res) => {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 totalPages: Math.ceil(totalOrders / parseInt(limit))
-            }
+            },
+            statusCounts: statusCountsObj
         });
     } catch (error) {
         console.error("Error fetching orders:", error);
