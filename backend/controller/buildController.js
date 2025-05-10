@@ -1,10 +1,10 @@
 import buildModel from '../model/buildModel.js';
 import mongoose from 'mongoose';
 
-// Add Build
+// Add Build. This handles post request to add a new build to the database
 const addBuild = async (req, res) => {
   try {
-    const buildData = req.body;
+    const buildData = req.body;//Extracts build data from request body
     
     // Log incoming data for debugging
     console.log('Received build data:', JSON.stringify(buildData, null, 2));
@@ -31,7 +31,7 @@ const addBuild = async (req, res) => {
       });
     }
 
-    // Validate components array
+    // Validate components array. The components are an array of objects
     if (!Array.isArray(buildData.components)) {
       console.log('Invalid components format:', buildData.components);
       return res.status(400).json({ 
@@ -104,7 +104,7 @@ const addBuild = async (req, res) => {
     console.log('Processed build data:', JSON.stringify(processedBuildData, null, 2));
 
     try {
-      // Create new build
+      // Create new build and save it to the database
       const newBuild = await buildModel.create(processedBuildData);
       console.log('Build created successfully:', newBuild);
       res.status(201).json({ success: true, message: 'Build added successfully', build: newBuild });
@@ -127,7 +127,7 @@ const addBuild = async (req, res) => {
   }
 };
 
-// List Builds
+// List Builds. This handles get request to get all builds from the database using the buildModel.find({}) method
 const listBuilds = async (req, res) => {
   try {
     const builds = await buildModel.find({});
@@ -147,7 +147,7 @@ const getBuildById = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid build ID format' });
     }
 
-    const build = await buildModel.findById(id);
+    const build = await buildModel.findById(id);//Finds the build by ID using the buildModel.findById method
 
     if (!build) {
       return res.status(404).json({ success: false, message: 'Build not found' });
@@ -163,8 +163,8 @@ const getBuildById = async (req, res) => {
 // Update Build
 const updateBuild = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updateData = req.body;
+    const { id } = req.params;//Extracts the build ID from the request parameters
+    const updateData = req.body;//
 
     const updatedBuild = await buildModel.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -182,11 +182,12 @@ const updateBuild = async (req, res) => {
   }
 };
 
-// Delete Build
+// Delete Build. Handles delete request to delete a build from the database using the buildModel.findByIdAndDelete method
 const removeBuild = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params;//Extracts the build ID from the request parameters
 
+    //Checks if the build ID is valid using the mongoose.Types.ObjectId.isValid method
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid build ID' });
     }
@@ -203,4 +204,4 @@ const removeBuild = async (req, res) => {
   }
 };
 
-export { addBuild, listBuilds, getBuildById, updateBuild, removeBuild }; 
+export { addBuild, listBuilds, getBuildById, updateBuild, removeBuild };//Exports the functions to be used in routes

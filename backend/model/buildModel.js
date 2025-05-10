@@ -17,10 +17,10 @@ const buildSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     image: { type: String, required: true },
     _id: { type: mongoose.Schema.Types.ObjectId, required: true }
-  }],
+  }],//Defines the components array. The components are an array of objects
   totalPrice: { type: Number, required: true }
-}, { timestamps: true });
+}, { timestamps: true });//Adds createdAt and updatedAt fields to the schema
 
 const buildModel = mongoose.models.build || mongoose.model("build", buildSchema);
 
-export default buildModel; 
+export default buildModel;//Exports the buildModel to be used in the controller

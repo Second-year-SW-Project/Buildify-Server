@@ -3,6 +3,8 @@ import { Transaction } from "../model/TransactionModel.js";
 import Stripe from "stripe";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import Product from "../model/productModel.js";
+import User from "../model/userModel.js";
 
 dotenv.config({ path: "./config.env" }); // Load environment variables
 
@@ -74,7 +76,7 @@ export const checkout = async (req, res) => {
           ${items.map((item) => `<li>${item.name} x ${item.quantity} - ${item.price * item.quantity} LKR</li>`).join("")}
         </ul>
         <h3>Total Paid: ${total.toLocaleString()} LKR</h3>
-        <p>We’ll keep you updated when your order is on the way. 🛒</p>
+        <p>We'll keep you updated when your order is on the way. 🛒</p>
       `,
         };
 
@@ -101,23 +103,164 @@ export const checkout = async (req, res) => {
 
 export const getOrders = async (req, res) => {
     try {
-        const orders = await Transaction.find().sort({ createdAt: -1 });; // Fetch all orders from the database
-        res.status(200).json({ Success: true, data: orders });
+        const {
+            search,
+            query,
+            date,
+            orderId,
+            page = 1,
+            limit = 5,
+        } = req.query;
+        const searchQuery = search || query; // Support both search and query parameters
+        const queryObj = {};
+
+        // Add Order ID search 
+        if (orderId) {
+            // Match the orderId at the end of the ObjectId string
+            queryObj.$expr = {
+                // Match the input(ObjectId) with the orderId
+                $regexMatch: {
+                    input: {
+                        //Extract the last 4 characters from ObjectId
+                        $substrCP: [
+                            { $toString: "$_id" }, // Convert ObjectId to string
+                            { $subtract: [{ $strLenCP: { $toString: "$_id" } }, 4] }, // Start from the 4th last character
+                            4
+                        ]
+                    },
+                    // Match the orderId at the beginning of the string
+                    regex: new RegExp(`^${orderId}`, 'i')
+                }
+            };
+        }
+
+        if (searchQuery) {
+            queryObj.$or = [
+                { user_name: { $regex: searchQuery, $options: 'i' } },
+                { email: { $regex: searchQuery, $options: 'i' } },
+                { status: { $regex: searchQuery, $options: 'i' } }
+            ];
+        }
+        // Add date filter
+        if (date) {
+            const filterDate = new Date(date);
+            const nextDay = new Date(filterDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+
+            // Filter products updated within the date range
+            queryObj.createdAt = {
+                $gte: filterDate,
+                $lt: nextDay
+            };
+        }
+
+        // Calculate skip value for pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Get total count of Orders
+        const totalOrders = await Transaction.countDocuments(queryObj);
+
+        const orders = await Transaction.find(queryObj)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        // Fetch product details for each order's items
+        const ordersWithDetails = await Promise.all(orders.map(async (order) => {
+            const orderObj = order.toObject();
+
+            // Fetch product details for each item
+            const itemsWithDetails = await Promise.all(orderObj.items.map(async (item) => {
+                try {
+                    // Check if item._id is a valid ObjectId
+                    if (!mongoose.Types.ObjectId.isValid(item._id)) {
+                        console.warn(`Invalid ObjectId: ${item._id}`);
+                        return item;
+                    }
+
+                    const product = await Product.findById(item._id);
+
+                    // Check if product exists
+                    if (product) {
+                        return {
+                            ...item,
+                            productDetails: {
+                                name: product.name,
+                                type: product.type,
+                                price: product.price,
+                                image: product.img_urls?.[0]?.url || null
+                            }
+                        };
+                    }
+                    return item;
+
+                } catch (error) {
+                    console.error(`Error fetching product details for ${item._id}:`, error);
+                }
+            }));
+
+            // Fetch user details if user_id exists
+            let userDetails = null;
+            // Check if user_id is a valid ObjectId
+            if (orderObj.user_id) {
+                try {
+                    // Check if user_id is a valid ObjectId
+                    if (!mongoose.Types.ObjectId.isValid(orderObj.user_id)) {
+                        console.warn(`Invalid ObjectId: ${orderObj.user_id}`);
+                        return orderObj;
+                    }
+
+                    const user = await User.findById(orderObj.user_id);
+
+                    // Check if user exists
+                    if (user) {
+                        userDetails = {
+                            name: user.name,
+                            email: user.email,
+                            profilePicture: user.profilePicture
+                        };
+                    }
+
+                } catch (error) {
+                    console.error(`Error fetching user details for ${orderObj.user_id}:`, error);
+                }
+            }
+
+            return {
+                ...orderObj,
+                items: itemsWithDetails,
+                userDetails
+            };
+        }));
+
+        res.status(200).json({
+            Success: true,
+            data: ordersWithDetails,
+            pagination: {
+                total: totalOrders,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(totalOrders / parseInt(limit))
+            }
+        });
     } catch (error) {
         console.error("Error fetching orders:", error);
-        res.status(500).json({ message: "Failed to fetch orders" });
+        res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
     }
 };
 
 // Delete order by ID
 export const deleteOrder = async (req, res) => {
     try {
+        //Extract order ID from request parameters
         const { id } = req.params;
 
+        // Check if the ID is a valid 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ Success: false, message: 'Invalid Order ID' });
         }
 
+        // Find and delete the order by ID
         const existingOrder = await Transaction.findByIdAndDelete(id);
         if (!existingOrder) {
             return res.status(404).json({ Success: false, message: 'Order not found' });
@@ -127,6 +270,7 @@ export const deleteOrder = async (req, res) => {
             Success: true,
             message: `Order With #${existingOrder.id.slice(-4).toUpperCase()} Id Deleted Successfully`,
         });
+
     } catch (error) {
         console.error("Error deleting order:", error);
         return res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
