@@ -8,7 +8,7 @@ const itemSchema = new Schema({
     itemName: {
         type: String
     },
-    SubCategory: {
+    subCategory: {
         type: String
     },
     quantity: {

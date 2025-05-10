@@ -135,13 +135,19 @@ export const deleteOrder = async (req, res) => {
 
 // Get transaction by user
 export const getProductOrders = async (req, res) => {
-    try {
-        const orders = await Transaction.find({ user_id: req.user._id }).sort({ createdAt: -1 });
-        res.status(200).json(orders);
-    } catch (err) {
-        res.status(500).json({ message: "Failed to fetch orders", error: err.message });
-    }
+  try {
+      const userId = req.query.userId;
+      if (!userId) {
+          return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const orders = await Transaction.find({ user_id: userId }).sort({ createdAt: -1 });
+      res.status(200).json(orders);
+  } catch (err) {
+      res.status(500).json({ message: "Failed to fetch orders", error: err.message });
+  }
 };
+
 
 
 export const getSinglOrder = async (req, res) => {
