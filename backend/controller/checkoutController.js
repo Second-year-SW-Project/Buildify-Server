@@ -25,7 +25,7 @@ export const checkout = async (req, res) => {
     try {
         console.log("Checkout Request Body:", req.body);
 
-        const { items, total, paymentMethodId, customerEmail, customerName, user } = req.body;
+        const { items, total, paymentMethodId, customerEmail, customerName, customerAddress, customerNumber, user } = req.body;
 
         if (!Array.isArray(items) || items.length === 0 || !total || !paymentMethodId || !customerEmail) {
             return res.status(400).json({ message: "Invalid request data" });
@@ -56,6 +56,8 @@ export const checkout = async (req, res) => {
             total,
             status: "Pending",
             user_id: user || "Test id",
+            address: customerAddress,
+            number: customerNumber,
             user_name: customerName || "Test User",
             email: customerEmail,
             profile_image: "../../client/public/logo.png",
@@ -76,7 +78,7 @@ export const checkout = async (req, res) => {
           ${items.map((item) => `<li>${item.name} x ${item.quantity} - ${item.price * item.quantity} LKR</li>`).join("")}
         </ul>
         <h3>Total Paid: ${total.toLocaleString()} LKR</h3>
-        <p>We'll keep you updated when your order is on the way. 🛒</p>
+        <p>We’ll keep you updated when your order is on the way. 🛒</p>
       `,
         };
 
@@ -185,7 +187,7 @@ export const getOrders = async (req, res) => {
         const totalOrders = await Transaction.countDocuments(queryObj);
 
         const orders = await Transaction.find(queryObj)
-            .sort({ createdAt: -1 })
+            .sort({ updatedAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
 
@@ -305,7 +307,11 @@ export const deleteOrder = async (req, res) => {
 // Get transaction by user
 export const getProductOrders = async (req, res) => {
     try {
-        const orders = await Transaction.find({ user_id: req.user._id }).sort({ createdAt: -1 });
+        const userId = req.query.userId;
+        if (!userId) {
+            return res.status(400).json({ message: "User ID is required" });
+        }
+        const orders = await Transaction.find({ user_id: userId }).sort({ createdAt: -1 });
         res.status(200).json(orders);
     } catch (err) {
         res.status(500).json({ message: "Failed to fetch orders", error: err.message });
@@ -313,17 +319,116 @@ export const getProductOrders = async (req, res) => {
 };
 
 
-export const getSinglOrder = async (req, res) => {
-    try {
-        const order = await Transaction.findOne({ _id: req.params.id });
+// export const getSinglOrder = async (req, res) => {
+//     try {
+//         const order = await Transaction.findOne({ _id: req.params.id });
 
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" });
+//         if (!order) {
+//             return res.status(404).json({ message: "Order not found" });
+//         }
+
+//         res.status(200).json(order);
+//     } catch (err) {
+//         res.status(500).json({ message: "Error retrieving order", error: err.message });
+//     }
+// };
+
+export const getSingleOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ Success: false, message: `Invalid order ID: ${id}` });
         }
 
-        res.status(200).json(order);
-    } catch (err) {
-        res.status(500).json({ message: "Error retrieving order", error: err.message });
+        // Fetch order
+        const order = await Transaction.findById(id);
+        if (!order) {
+            return res.status(404).json({ Success: false, message: `Order not found for ID: ${id}` });
+        }
+
+        console.log("Fetched Order:", {
+            id: order._id,
+            createdAt: order.createdAt,
+            stepTimestamps: order.stepTimestamps
+        });
+
+        // Convert order to plain object
+        const orderObj = order.toObject();
+
+        // Fetch product details for each item
+        const itemsWithDetails = await Promise.all(orderObj.items.map(async (item) => {
+            try {
+                // Check if item._id is a valid ObjectId
+                if (!mongoose.Types.ObjectId.isValid(item._id)) {
+                    console.warn(`Invalid ObjectId: ${item._id}`);
+                    return item;
+                }
+
+                const product = await Product.findById(item._id);
+
+                // Check if product exists
+                if (product) {
+                    return {
+                        ...item,
+                        productDetails: {
+                            name: product.name,
+                            type: product.type,
+                            price: product.price,
+                            image: product.img_urls?.[0]?.url || null
+                        }
+                    };
+                }
+                return item;
+
+            } catch (error) {
+                console.error(`Error fetching product details for ${item._id}:`, error);
+                return item;
+            }
+        }));
+
+        // Fetch user details if user_id exists
+        let userDetails = null;
+        if (orderObj.user_id) {
+            try {
+                // Check if user_id is a valid ObjectId
+                if (!mongoose.Types.ObjectId.isValid(orderObj.user_id)) {
+                    console.warn(`Invalid ObjectId: ${orderObj.user_id}`);
+                } else {
+                    const user = await User.findById(orderObj.user_id);
+                    // Check if user exists
+                    if (user) {
+                        userDetails = {
+                            name: user.name,
+                            email: user.email,
+                            profilePicture: user.profilePicture
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error(`Error fetching user details for ${orderObj.user_id}:`, error);
+            }
+        }
+
+        // Combine all details
+        const orderWithDetails = {
+            ...orderObj,
+            items: itemsWithDetails,
+            userDetails
+        };
+
+        res.status(200).json({
+            Success: true,
+            data: orderWithDetails
+        });
+
+    } catch (error) {
+        console.error('Error in getSingleOrder:', error);
+        res.status(500).json({
+            Success: false,
+            message: `Server error: ${error.message}`
+        });
     }
 };
 
@@ -332,11 +437,42 @@ export const getSinglOrder = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, stepTimestamp } = req.body;
+
+        const updateData = { status };
+
+        // If stepTimestamp is provided, update the specific step timestamp
+        if (stepTimestamp) {
+            // Create an update object for each timestamp
+            const timestampUpdates = {};
+            Object.entries(stepTimestamp).forEach(([key, value]) => {
+                if (value === null) {
+                    // If value is null, unset the field
+                    timestampUpdates[`stepTimestamps.${key}`] = 1;
+                } else {
+                    // Otherwise set the new value
+                    timestampUpdates[`stepTimestamps.${key}`] = value;
+                }
+            });
+
+            // Add the timestamp updates to the update data
+            updateData.$set = timestampUpdates;
+        }
+
+        // If status is Pending, ensure we use createdAt
+        if (status === 'Pending') {
+            const order = await Transaction.findById(id);
+            if (order) {
+                updateData.$set = {
+                    ...updateData.$set,
+                    'stepTimestamps.Pending': order.createdAt
+                };
+            }
+        }
 
         const updatedOrder = await Transaction.findByIdAndUpdate(
             id,
-            { status },
+            updateData,
             { new: true }
         );
 
