@@ -1,5 +1,6 @@
 import buildModel from '../model/buildModel.js';
 import mongoose from 'mongoose';
+import Product from '../model/productModel.js';
 
 // Add Build. This handles post request to add a new build to the database
 const addBuild = async (req, res) => {
@@ -209,4 +210,102 @@ const removeBuild = async (req, res) => {
   }
 };
 
-export { addBuild, listBuilds, getBuildById, updateBuild, removeBuild };
+// Get Builds by User ID
+const getBuildsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    // Fetch builds for the user
+    const builds = await buildModel.find({ userId }).sort({ createdAt: -1 });
+
+    // For each build, populate the components array with product details
+    const buildsWithComponentDetails = await Promise.all(
+      builds.map(async (build) => {
+        // For each component, fetch the product details
+        const populatedComponents = await Promise.all(
+          (build.components || []).map(async (comp) => {
+            try {
+              const product = await Product.findById(comp.componentId);
+              if (product) {
+                return {
+                  type: product.type,
+                  name: product.name,
+                  quantity: comp.quantity,
+                  componentId: comp.componentId,
+                };
+              } else {
+                return {
+                  type: 'Unknown',
+                  name: 'Unknown',
+                  quantity: comp.quantity,
+                  componentId: comp.componentId,
+                };
+              }
+            } catch (err) {
+              return {
+                type: 'Error',
+                name: 'Error',
+                quantity: comp.quantity,
+                componentId: comp.componentId,
+              };
+            }
+          })
+        );
+        // Return the build with populated components
+        return {
+          ...build.toObject(),
+          components: populatedComponents,
+        };
+      })
+    );
+
+    res.json({ success: true, builds: buildsWithComponentDetails });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete a build by ID
+const deleteBuild = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid build ID' });
+    }
+    const deleted = await buildModel.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Build not found' });
+    }
+    res.json({ success: true, message: 'Build deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Toggle publish status of a build by ID
+const togglePublishBuild = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid build ID' });
+    }
+    const build = await buildModel.findById(id);
+    if (!build) {
+      return res.status(404).json({ success: false, message: 'Build not found' });
+    }
+    build.published = !build.published;
+    await build.save();
+    res.json({ success: true, published: build.published, message: `Build is now ${build.published ? 'published' : 'unpublished'}` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export { addBuild, listBuilds, getBuildById, updateBuild, removeBuild, getBuildsByUser, deleteBuild, togglePublishBuild };
