@@ -390,7 +390,7 @@ export const getProductOrders = async (req, res) => {
 
 
 
-// export const getSinglOrder = async (req, res) => {
+// export const getSingleOrder = async (req, res) => {
 //     try {
 //         const order = await Transaction.findOne({ _id: req.params.id });
 
@@ -404,7 +404,7 @@ export const getProductOrders = async (req, res) => {
 //     }
 // };
 
-export const getSinglOrder = async (req, res) => {
+export const getSingleOrder = async (req, res) => {
     try {
         const orderId = req.params.id;
 
