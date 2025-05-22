@@ -1,38 +1,53 @@
 import buildModel from '../model/buildModel.js';
 import mongoose from 'mongoose';
+import Product from '../model/productModel.js';
 
 // Add Build. This handles post request to add a new build to the database
 const addBuild = async (req, res) => {
   try {
-    const buildData = req.body;//Extracts build data from request body
+    const buildData = req.body; // Extracts build data from request body
     
     // Log incoming data for debugging
     console.log('Received build data:', JSON.stringify(buildData, null, 2));
+    console.log('Data types:', {
+      name: typeof buildData.name,
+      componentsPrice: typeof buildData.componentsPrice,
+      totalPrice: typeof buildData.totalPrice,
+      components: Array.isArray(buildData.components) ? 'array' : typeof buildData.components
+    });
     
     // Validate required fields
-    if (!buildData.name || !buildData.type || !buildData.image || !buildData.components || !buildData.totalPrice) {
+    if (!buildData.name || (!buildData.componentsPrice && !buildData.totalPrice)) {
       console.log('Missing required fields:', {
         name: !buildData.name,
-        type: !buildData.type,
-        image: !buildData.image,
-        components: !buildData.components,
-        totalPrice: !buildData.totalPrice
+        componentsPrice: !buildData.componentsPrice,
+        totalPrice: !buildData.totalPrice,
+        nameValue: buildData.name,
+        componentsPriceValue: buildData.componentsPrice,
+        totalPriceValue: buildData.totalPrice
       });
       return res.status(400).json({ 
         success: false, 
         message: 'Missing required fields',
         missingFields: {
           name: !buildData.name,
-          type: !buildData.type,
-          image: !buildData.image,
-          components: !buildData.components,
-          totalPrice: !buildData.totalPrice
+          price: !buildData.componentsPrice && !buildData.totalPrice
+        },
+        receivedData: {
+          name: buildData.name,
+          componentsPrice: buildData.componentsPrice,
+          totalPrice: buildData.totalPrice
         }
       });
     }
 
+    // Use totalPrice if componentsPrice is not provided
+    if (!buildData.componentsPrice && buildData.totalPrice) {
+      buildData.componentsPrice = buildData.totalPrice;
+    }
+
     // Validate components array. The components are an array of objects
-    if (!Array.isArray(buildData.components)) {
+    if (buildData.components && !Array.isArray(buildData.components)) {
       console.log('Invalid components format:', buildData.components);
       return res.status(400).json({ 
         success: false, 
@@ -40,65 +55,56 @@ const addBuild = async (req, res) => {
       });
     }
 
-    // Validate each component
-    const invalidComponents = buildData.components.filter(component => {
-      const missingFields = [];
-      if (!component.componentName) missingFields.push('componentName');
-      if (!component.type) missingFields.push('type');
-      if (!component.price) missingFields.push('price');
-      if (!component.image) missingFields.push('image');
-      if (!component._id) missingFields.push('_id');
-      return missingFields.length > 0;
-    });
-
-    if (invalidComponents.length > 0) {
-      console.log('Invalid components found:', invalidComponents);
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid component data',
-        invalidComponents
+    // Only validate components if they exist
+    if (buildData.components && buildData.components.length > 0) {
+      const invalidComponents = buildData.components.filter(component => {
+        const missingFields = [];
+        if (!component.componentId && !component._id) missingFields.push('componentId');
+        if (!component.quantity) missingFields.push('quantity');
+        return missingFields.length > 0;
       });
+
+      if (invalidComponents.length > 0) {
+        console.log('Invalid components found:', invalidComponents);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid component data',
+          invalidComponents
+        });
+      }
     }
 
     // Process components to handle duplicates
-    const processedComponents = buildData.components.reduce((acc, component) => {
+    const processedComponents = buildData.components ? buildData.components.reduce((acc, component) => {
       try {
+        // Use _id if componentId is not available
+        const componentId = component.componentId || component._id;
+        
         // Find if this component already exists in the accumulator
         const existingComponent = acc.find(c => 
-          c.componentName === component.componentName && 
-          c.type === component.type && 
-          c._id.toString() === component._id.toString()
+          c.componentId.toString() === componentId.toString()
         );
 
         if (existingComponent) {
           // If component exists, increment quantity
-          existingComponent.quantity += 1;
-          // Keep the original price per unit
-          existingComponent.price = component.price;
+          existingComponent.quantity += component.quantity;
         } else {
-          // If component doesn't exist, add it with quantity 1
+          // If component doesn't exist, add it with quantity
           acc.push({
-            ...component,
-            quantity: 1,
-            price: component.price // Keep original price
+            componentId: componentId,
+            quantity: component.quantity
           });
         }
       } catch (error) {
         console.error('Error processing component:', component, error);
       }
       return acc;
-    }, []);
+    }, []) : [];
 
-    // Calculate total price based on quantity and unit price
-    const totalPrice = processedComponents.reduce((sum, component) => {
-      return sum + (component.price * component.quantity);
-    }, 0);
-
-    // Update build data with processed components and total price
+    // Update build data with processed components
     const processedBuildData = {
       ...buildData,
-      components: processedComponents,
-      totalPrice: totalPrice
+      components: processedComponents
     };
 
     console.log('Processed build data:', JSON.stringify(processedBuildData, null, 2));
@@ -147,7 +153,7 @@ const getBuildById = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid build ID format' });
     }
 
-    const build = await buildModel.findById(id);//Finds the build by ID using the buildModel.findById method
+    const build = await buildModel.findById(id); // Finds the build by ID using the buildModel.findById method
 
     if (!build) {
       return res.status(404).json({ success: false, message: 'Build not found' });
@@ -163,8 +169,8 @@ const getBuildById = async (req, res) => {
 // Update Build
 const updateBuild = async (req, res) => {
   try {
-    const { id } = req.params;//Extracts the build ID from the request parameters
-    const updateData = req.body;//
+    const { id } = req.params; // Extracts the build ID from the request parameters
+    const updateData = req.body;
 
     const updatedBuild = await buildModel.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -185,9 +191,9 @@ const updateBuild = async (req, res) => {
 // Delete Build. Handles delete request to delete a build from the database using the buildModel.findByIdAndDelete method
 const removeBuild = async (req, res) => {
   try {
-    const { id } = req.params;//Extracts the build ID from the request parameters
+    const { id } = req.params; // Extracts the build ID from the request parameters
 
-    //Checks if the build ID is valid using the mongoose.Types.ObjectId.isValid method
+    // Checks if the build ID is valid using the mongoose.Types.ObjectId.isValid method
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid build ID' });
     }
@@ -204,4 +210,102 @@ const removeBuild = async (req, res) => {
   }
 };
 
-export { addBuild, listBuilds, getBuildById, updateBuild, removeBuild };//Exports the functions to be used in routes
+// Get Builds by User ID
+const getBuildsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    // Fetch builds for the user
+    const builds = await buildModel.find({ userId }).sort({ createdAt: -1 });
+
+    // For each build, populate the components array with product details
+    const buildsWithComponentDetails = await Promise.all(
+      builds.map(async (build) => {
+        // For each component, fetch the product details
+        const populatedComponents = await Promise.all(
+          (build.components || []).map(async (comp) => {
+            try {
+              const product = await Product.findById(comp.componentId);
+              if (product) {
+                return {
+                  type: product.type,
+                  name: product.name,
+                  quantity: comp.quantity,
+                  componentId: comp.componentId,
+                };
+              } else {
+                return {
+                  type: 'Unknown',
+                  name: 'Unknown',
+                  quantity: comp.quantity,
+                  componentId: comp.componentId,
+                };
+              }
+            } catch (err) {
+              return {
+                type: 'Error',
+                name: 'Error',
+                quantity: comp.quantity,
+                componentId: comp.componentId,
+              };
+            }
+          })
+        );
+        // Return the build with populated components
+        return {
+          ...build.toObject(),
+          components: populatedComponents,
+        };
+      })
+    );
+
+    res.json({ success: true, builds: buildsWithComponentDetails });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete a build by ID
+const deleteBuild = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid build ID' });
+    }
+    const deleted = await buildModel.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Build not found' });
+    }
+    res.json({ success: true, message: 'Build deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Toggle publish status of a build by ID
+const togglePublishBuild = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid build ID' });
+    }
+    const build = await buildModel.findById(id);
+    if (!build) {
+      return res.status(404).json({ success: false, message: 'Build not found' });
+    }
+    build.published = !build.published;
+    await build.save();
+    res.json({ success: true, published: build.published, message: `Build is now ${build.published ? 'published' : 'unpublished'}` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export { addBuild, listBuilds, getBuildById, updateBuild, removeBuild, getBuildsByUser, deleteBuild, togglePublishBuild };

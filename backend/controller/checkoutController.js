@@ -25,7 +25,7 @@ export const checkout = async (req, res) => {
     try {
         console.log("Checkout Request Body:", req.body);
 
-        const { items, total, paymentMethodId, customerEmail, customerName, user } = req.body;
+        const { items, total, paymentMethodId, customerEmail, customerName, customerAddress, customerNumber, user } = req.body;
 
         if (!Array.isArray(items) || items.length === 0 || !total || !paymentMethodId || !customerEmail) {
             return res.status(400).json({ message: "Invalid request data" });
@@ -56,6 +56,8 @@ export const checkout = async (req, res) => {
             total,
             status: "Pending",
             user_id: user || "Test id",
+            address: customerAddress,
+            number: customerNumber,
             user_name: customerName || "Test User",
             email: customerEmail,
             profile_image: "../../client/public/logo.png",
@@ -76,7 +78,7 @@ export const checkout = async (req, res) => {
           ${items.map((item) => `<li>${item.name} x ${item.quantity} - ${item.price * item.quantity} LKR</li>`).join("")}
         </ul>
         <h3>Total Paid: ${total.toLocaleString()} LKR</h3>
-        <p>We'll keep you updated when your order is on the way. 🛒</p>
+        <p>We’ll keep you updated when your order is on the way. 🛒</p>
       `,
         };
 
@@ -110,9 +112,15 @@ export const getOrders = async (req, res) => {
             orderId,
             page = 1,
             limit = 5,
+            status
         } = req.query;
         const searchQuery = search || query; // Support both search and query parameters
         const queryObj = {};
+
+        // Add status filter if provided
+        if (status && status !== 'All') {
+            queryObj.status = status;
+        }
 
         // Add Order ID search 
         if (orderId) {
@@ -141,6 +149,7 @@ export const getOrders = async (req, res) => {
                 { status: { $regex: searchQuery, $options: 'i' } }
             ];
         }
+
         // Add date filter
         if (date) {
             const filterDate = new Date(date);
@@ -154,6 +163,23 @@ export const getOrders = async (req, res) => {
             };
         }
 
+        // Get status counts
+        const statusCounts = await Transaction.aggregate([
+            {
+                // Match the query object
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Convert status counts to object
+        const statusCountsObj = statusCounts.reduce((acc, curr) => {
+            acc[curr._id] = curr.count;
+            return acc;
+        }, {});
+
         // Calculate skip value for pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -161,7 +187,7 @@ export const getOrders = async (req, res) => {
         const totalOrders = await Transaction.countDocuments(queryObj);
 
         const orders = await Transaction.find(queryObj)
-            .sort({ createdAt: -1 })
+            .sort({ updatedAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
 
@@ -241,7 +267,8 @@ export const getOrders = async (req, res) => {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 totalPages: Math.ceil(totalOrders / parseInt(limit))
-            }
+            },
+            statusCounts: statusCountsObj
         });
     } catch (error) {
         console.error("Error fetching orders:", error);
@@ -445,11 +472,42 @@ export const getSinglOrder = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, stepTimestamp } = req.body;
+
+        const updateData = { status };
+
+        // If stepTimestamp is provided, update the specific step timestamp
+        if (stepTimestamp) {
+            // Create an update object for each timestamp
+            const timestampUpdates = {};
+            Object.entries(stepTimestamp).forEach(([key, value]) => {
+                if (value === null) {
+                    // If value is null, unset the field
+                    timestampUpdates[`stepTimestamps.${key}`] = 1;
+                } else {
+                    // Otherwise set the new value
+                    timestampUpdates[`stepTimestamps.${key}`] = value;
+                }
+            });
+
+            // Add the timestamp updates to the update data
+            updateData.$set = timestampUpdates;
+        }
+
+        // If status is Pending, ensure we use createdAt
+        if (status === 'Pending') {
+            const order = await Transaction.findById(id);
+            if (order) {
+                updateData.$set = {
+                    ...updateData.$set,
+                    'stepTimestamps.Pending': order.createdAt
+                };
+            }
+        }
 
         const updatedOrder = await Transaction.findByIdAndUpdate(
             id,
-            { status },
+            updateData,
             { new: true }
         );
 
