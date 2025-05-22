@@ -285,24 +285,156 @@ export const getProductOrders = async (req, res) => {
           return res.status(400).json({ message: "User ID is required" });
       }
 
-      const orders = await Transaction.find({ user_id: userId }).sort({ createdAt: -1 });
+      const orders = await Transaction.aggregate(
+        [
+            { $match: { user_id: userId } },
+            { $sort: { createdAt: -1 } },
+            { $unwind: "$items" },
+            {
+                $lookup: {
+                    from: "products",
+                    let: { productId: { $toObjectId: "$items._id" } },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$_id", "$$productId"] },
+                            },
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                price: 1,
+                                img_urls: 1,
+                            },
+                        },
+                    ],
+                    
+                    as: "productDetails",
+                },
+            },
+            //Simplify productDetails array into single object
+            { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
+
+            {
+                $group: {
+                    _id: "$_id",
+                    items: {
+                        $push: {
+                            _id: "$items._id",
+                            quantity: "$items.quantity",
+                            name: "$productDetails.name",
+                            price: "$productDetails.price",
+                            product_image: { 
+                                $arrayElemAt: ["$productDetails.img_urls.url", 0], 
+                            },
+                        },
+                    },
+                    total: { $first: "$total" },
+                    status: { $first: "$status" },
+                    user_id: { $first: "$user_id" },
+                    user_name: { $first: "$user_name" },
+                    email: { $first: "$email" },
+                    createdAt: { $first: "$createdAt" },
+                },
+            },
+            { $sort: { createdAt: -1 } },
+        ]
+      );
+       
       res.status(200).json(orders);
   } catch (err) {
       res.status(500).json({ message: "Failed to fetch orders", error: err.message });
   }
 };
 
+// export const getProductOrders = async (req, res) => {
+//   try {
+//       const userId = req.query.userId;
+//       if (!userId) {
+//           return res.status(400).json({ message: "User ID is required" });
+//       }
 
+//       const orders = await Transaction.find({ user_id: userId }).sort({ createdAt: -1 });
+//       res.status(200).json(orders);
+//   } catch (err) {
+//       res.status(500).json({ message: "Failed to fetch orders", error: err.message });
+//   }
+// };
+
+
+
+// export const getSinglOrder = async (req, res) => {
+//     try {
+//         const order = await Transaction.findOne({ _id: req.params.id });
+
+//         if (!order) {
+//             return res.status(404).json({ message: "Order not found" });
+//         }
+
+//         res.status(200).json(order);
+//     } catch (err) {
+//         res.status(500).json({ message: "Error retrieving order", error: err.message });
+//     }
+// };
 
 export const getSinglOrder = async (req, res) => {
     try {
-        const order = await Transaction.findOne({ _id: req.params.id });
+        const orderId = req.params.id;
 
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" });
-        }
+        const orders = await Transaction.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(orderId) } },
+            { $unwind: "$items" },
+            {
+                $lookup: {
+                    from: "products",
+                    let: { productId: { $toObjectId: "$items._id" } },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$_id", "$$productId"] },
+                            },
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                price: 1,
+                                img_urls: 1,
+                            },
+                        },
+                    ],
+                    
+                    as: "productDetails",
+                },
+            },
+            { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
 
-        res.status(200).json(order);
+            {
+                $group: {
+                    _id: "$_id",
+                    items: {
+                        $push: {
+                            _id: "$items._id",
+                            quantity: "$items.quantity",
+                            name: "$productDetails.name",
+                            price: "$productDetails.price",
+                            product_image: { 
+                                $arrayElemAt: ["$productDetails.img_urls.url", 0], 
+                            },
+                        },
+                    },
+                    total: { $first: "$total" },
+                    status: { $first: "$status" },
+                    user_id: { $first: "$user_id" },
+                    user_name: { $first: "$user_name" },
+                    email: { $first: "$email" },
+                    createdAt: { $first: "$createdAt" },
+                },
+            },
+        ]);
+    if (!orders.length) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+        res.status(200).json(orders[0]);
     } catch (err) {
         res.status(500).json({ message: "Error retrieving order", error: err.message });
     }
