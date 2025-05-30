@@ -17,13 +17,13 @@ const productSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     // CPU (for processors and prebuilds)
     socket_type: { type: String, required: false },
-    tdp: { type: Number, required: false },
     core_count: { type: Number, required: false },
     thread_count: { type: Number, required: false },
     base_clock: { type: String, required: false },
     boost_clock: { type: String, required: false },
     integrated_graphics: { type: Boolean, required: false },
     includes_cooler: { type: Boolean, required: false },
+    tdp: { type: Number, required: false },
     // Cooler
     cooler_type: { type: String, required: false },
     supported_socket: { type: String, required: false },
@@ -31,10 +31,12 @@ const productSchema = new mongoose.Schema(
     height: { type: Number, required: false },
     // Motherboard
     motherboard_chipset: { type: String, required: false },
+    socket_type: { type: String, required: false },
     form_factor: { type: String, required: false },
     ram_slots: { type: Number, required: false },
     max_ram: { type: Number, required: false },
     supported_memory_types: { type: String, required: false },
+    tdp: { type: Number, required: false },
     pcie_slots: {
       type: [
         {
@@ -60,17 +62,21 @@ const productSchema = new mongoose.Schema(
     memory_type: { type: String, required: false },
     memory_speed: { type: String, required: false },
     memory_capacity: { type: String, required: false },
+    tdp: { type: Number, required: false },
     // Storage
     storage_type: { type: String, required: false },
     storage_capacity: { type: String, required: false },
+    tdp: { type: Number, required: false },
     // GPU
     interface_type: { type: String, required: false },
     length: { type: Number, required: false },
     power_connectors: { type: String, required: false },
     vram: { type: String, required: false },
+    tdp: { type: Number, required: false },
     gpu_chipset: { type: String, required: false },
     gpu_cores: { type: String, required: false },
     // Case
+    form_factor: { type: String, required: false },
     supported_motherboard_sizes: { type: String, required: false },
     max_gpu_length: { type: Number, required: false },
     max_cooler_height: { type: Number, required: false },
