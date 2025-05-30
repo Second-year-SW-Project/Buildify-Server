@@ -78,7 +78,7 @@ export const checkout = async (req, res) => {
           ${items.map((item) => `<li>${item.name} x ${item.quantity} - ${item.price * item.quantity} LKR</li>`).join("")}
         </ul>
         <h3>Total Paid: ${total.toLocaleString()} LKR</h3>
-        <p>We’ll keep you updated when your order is on the way. 🛒</p>
+        <p>We'll keep you updated when your order is on the way. 🛒</p>
       `,
         };
 
@@ -186,82 +186,90 @@ export const getOrders = async (req, res) => {
         // Get total count of Orders
         const totalOrders = await Transaction.countDocuments(queryObj);
 
-        const orders = await Transaction.find(queryObj)
-            .sort({ updatedAt: -1 })
-            .skip(skip)
-            .limit(parseInt(limit));
-
-        // Fetch product details for each order's items
-        const ordersWithDetails = await Promise.all(orders.map(async (order) => {
-            const orderObj = order.toObject();
-
-            // Fetch product details for each item
-            const itemsWithDetails = await Promise.all(orderObj.items.map(async (item) => {
-                try {
-                    // Check if item._id is a valid ObjectId
-                    if (!mongoose.Types.ObjectId.isValid(item._id)) {
-                        console.warn(`Invalid ObjectId: ${item._id}`);
-                        return item;
-                    }
-
-                    const product = await Product.findById(item._id);
-
-                    // Check if product exists
-                    if (product) {
-                        return {
-                            ...item,
-                            productDetails: {
-                                name: product.name,
-                                type: product.type,
-                                price: product.price,
-                                image: product.img_urls?.[0]?.url || null
-                            }
-                        };
-                    }
-                    return item;
-
-                } catch (error) {
-                    console.error(`Error fetching product details for ${item._id}:`, error);
-                }
-            }));
-
-            // Fetch user details if user_id exists
-            let userDetails = null;
-            // Check if user_id is a valid ObjectId
-            if (orderObj.user_id) {
-                try {
-                    // Check if user_id is a valid ObjectId
-                    if (!mongoose.Types.ObjectId.isValid(orderObj.user_id)) {
-                        console.warn(`Invalid ObjectId: ${orderObj.user_id}`);
-                        return orderObj;
-                    }
-
-                    const user = await User.findById(orderObj.user_id);
-
-                    // Check if user exists
-                    if (user) {
-                        userDetails = {
-                            name: user.name,
-                            email: user.email,
-                            profilePicture: user.profilePicture
-                        };
-                    }
-
-                } catch (error) {
-                    console.error(`Error fetching user details for ${orderObj.user_id}:`, error);
-                }
-            }
-
-            return {
-                ...orderObj,
-                items: itemsWithDetails,
-                userDetails
-            };
-        }));
+        // Use aggregation pipeline to get orders with product and user details
+        const orders = await Transaction.aggregate([
+            { $match: queryObj },
+            { $sort: { updatedAt: -1 } },
+            { $skip: skip },
+            { $limit: parseInt(limit) },
+            { $unwind: "$items" },
+            {
+                $lookup: {
+                    from: "products",
+                    let: { productId: { $toObjectId: "$items._id" } },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$_id", "$$productId"] },
+                            },
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                price: 1,
+                                img_urls: 1,
+                            },
+                        },
+                    ],
+                    as: "productDetails",
+                },
+            },
+            { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
+            // Add lookup for user details
+            {
+                $lookup: {
+                    from: "users",
+                    let: { userId: { $toObjectId: "$user_id" } },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$_id", "$$userId"] },
+                            },
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                email: 1,
+                                profilePicture: 1,
+                            },
+                        },
+                    ],
+                    as: "userDetails",
+                },
+            },
+            { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+            {
+                $group: {
+                    _id: "$_id",
+                    items: {
+                        $push: {
+                            _id: "$items._id",
+                            quantity: "$items.quantity",
+                            name: "$productDetails.name",
+                            price: "$productDetails.price",
+                            product_image: {
+                                $arrayElemAt: ["$productDetails.img_urls.url", 0],
+                            },
+                        },
+                    },
+                    total: { $first: "$total" },
+                    status: { $first: "$status" },
+                    user_id: { $first: "$user_id" },
+                    user_name: { $first: "$userDetails.name" },
+                    email: { $first: "$userDetails.email" },
+                    address: { $first: "$address" },
+                    number: { $first: "$number" },
+                    createdAt: { $first: "$createdAt" },
+                    stepTimestamps: { $first: "$stepTimestamps" },
+                    profilePicture: { $first: "$userDetails.profilePicture" },
+                    userDetails: { $first: "$userDetails" }
+                },
+            },
+        ]);
 
         res.status(200).json({
             Success: true,
-            data: ordersWithDetails,
+            data: orders,
             pagination: {
                 total: totalOrders,
                 page: parseInt(page),
@@ -306,74 +314,151 @@ export const deleteOrder = async (req, res) => {
 
 // Get transaction by user
 export const getProductOrders = async (req, res) => {
-  try {
-      const userId = req.query.userId;
-      if (!userId) {
-          return res.status(400).json({ message: "User ID is required" });
-      }
+    try {
+        const userId = req.query.userId;
+        if (!userId) {
+            return res.status(400).json({ message: "User ID is required" });
+        }
 
-      const orders = await Transaction.aggregate(
-        [
-            { $match: { user_id: userId } },
+        const orders = await Transaction.aggregate(
+            [
+                { $match: { user_id: userId } },
+                { $sort: { createdAt: -1 } },
+                { $unwind: "$items" },
+                {
+                    $lookup: {
+                        from: "products",
+                        let: { productId: { $toObjectId: "$items._id" } },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $eq: ["$_id", "$$productId"] },
+                                },
+                            },
+                            {
+                                $project: {
+                                    name: 1,
+                                    price: 1,
+                                    img_urls: 1,
+                                },
+                            },
+                        ],
+
+                        as: "productDetails",
+                    },
+                },
+                //Simplify productDetails array into single object
+                { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
+
+                {
+                    $group: {
+                        _id: "$_id",
+                        items: {
+                            $push: {
+                                _id: "$items._id",
+                                quantity: "$items.quantity",
+                                name: "$productDetails.name",
+                                price: "$productDetails.price",
+                                product_image: {
+                                    $arrayElemAt: ["$productDetails.img_urls.url", 0],
+                                },
+                            },
+                        },
+                        total: { $first: "$total" },
+                        status: { $first: "$status" },
+                        user_id: { $first: "$user_id" },
+                        user_name: { $first: "$user_name" },
+                        email: { $first: "$email" },
+                        createdAt: { $first: "$createdAt" },
+                    },
+                },
+                { $sort: { createdAt: -1 } },
+            ]
+        );
+
+        res.status(200).json(orders);
+    } catch (err) {
+        res.status(500).json({ message: "Failed to fetch orders", error: err.message });
+    }
+};
+
+export const getOrderSummary = async (req, res) => {
+    try {
+        console.log('getOrderSummary called with query:', req.query);
+        const { page = 1, limit = 5 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Get total count of pending orders
+        const totalOrders = await Transaction.countDocuments({ status: "Pending" });
+        console.log('Total pending orders:', totalOrders);
+
+        // Use aggregation pipeline to get pending orders with user details
+        const orders = await Transaction.aggregate([
+            { $match: { status: "Pending" } },
             { $sort: { createdAt: -1 } },
-            { $unwind: "$items" },
+            { $skip: skip },
+            { $limit: parseInt(limit) },
+            // Add lookup for user details
             {
                 $lookup: {
-                    from: "products",
-                    let: { productId: { $toObjectId: "$items._id" } },
+                    from: "users",
+                    let: { userId: { $toObjectId: "$user_id" } },
                     pipeline: [
                         {
                             $match: {
-                                $expr: { $eq: ["$_id", "$$productId"] },
+                                $expr: { $eq: ["$_id", "$$userId"] },
                             },
                         },
                         {
                             $project: {
                                 name: 1,
-                                price: 1,
-                                img_urls: 1,
+                                email: 1,
+                                profilePicture: 1,
                             },
                         },
                     ],
-                    
-                    as: "productDetails",
+                    as: "userDetails",
                 },
             },
-            //Simplify productDetails array into single object
-            { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
-
+            { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
             {
-                $group: {
-                    _id: "$_id",
-                    items: {
-                        $push: {
-                            _id: "$items._id",
-                            quantity: "$items.quantity",
-                            name: "$productDetails.name",
-                            price: "$productDetails.price",
-                            product_image: { 
-                                $arrayElemAt: ["$productDetails.img_urls.url", 0], 
-                            },
-                        },
-                    },
-                    total: { $first: "$total" },
-                    status: { $first: "$status" },
-                    user_id: { $first: "$user_id" },
-                    user_name: { $first: "$user_name" },
-                    email: { $first: "$email" },
-                    createdAt: { $first: "$createdAt" },
-                },
-            },
-            { $sort: { createdAt: -1 } },
-        ]
-      );
-       
-      res.status(200).json(orders);
-  } catch (err) {
-      res.status(500).json({ message: "Failed to fetch orders", error: err.message });
-  }
-};
+                $project: {
+                    _id: 1,
+                    items: 1,
+                    total: 1,
+                    status: 1,
+                    user_id: 1,
+                    user_name: "$userDetails.name",
+                    email: "$userDetails.email",
+                    address: 1,
+                    number: 1,
+                    createdAt: 1,
+                    profilePicture: "$userDetails.profilePicture"
+                }
+            }
+        ]);
 
+        console.log('Found orders:', orders.length);
+
+        res.status(200).json({
+            Success: true,
+            data: orders,
+            pagination: {
+                total: totalOrders,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(totalOrders / parseInt(limit))
+            }
+        });
+    } catch (err) {
+        console.error("Error in getOrderSummary:", err);
+        res.status(500).json({
+            Success: false,
+            message: "Failed to fetch orders",
+            error: err.message
+        });
+    }
+};
 // export const getProductOrders = async (req, res) => {
 //   try {
 //       const userId = req.query.userId;
@@ -429,12 +514,33 @@ export const getSingleOrder = async (req, res) => {
                             },
                         },
                     ],
-                    
                     as: "productDetails",
                 },
             },
             { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
-
+            // Add lookup for user details
+            {
+                $lookup: {
+                    from: "users",
+                    let: { userId: { $toObjectId: "$user_id" } },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$_id", "$$userId"] },
+                            },
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                email: 1,
+                                profilePicture: 1,
+                            },
+                        },
+                    ],
+                    as: "userDetails",
+                },
+            },
+            { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
             {
                 $group: {
                     _id: "$_id",
@@ -444,8 +550,8 @@ export const getSingleOrder = async (req, res) => {
                             quantity: "$items.quantity",
                             name: "$productDetails.name",
                             price: "$productDetails.price",
-                            product_image: { 
-                                $arrayElemAt: ["$productDetails.img_urls.url", 0], 
+                            product_image: {
+                                $arrayElemAt: ["$productDetails.img_urls.url", 0],
                             },
                         },
                     },
@@ -454,13 +560,17 @@ export const getSingleOrder = async (req, res) => {
                     user_id: { $first: "$user_id" },
                     user_name: { $first: "$user_name" },
                     email: { $first: "$email" },
+                    address: { $first: "$address" },
+                    number: { $first: "$number" },
                     createdAt: { $first: "$createdAt" },
+                    stepTimestamps: { $first: "$stepTimestamps" },
+                    profilePicture: { $first: "$userDetails.profilePicture" },
                 },
             },
         ]);
-    if (!orders.length) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+        if (!orders.length) {
+            return res.status(404).json({ message: "Order not found" });
+        }
         res.status(200).json(orders[0]);
     } catch (err) {
         res.status(500).json({ message: "Error retrieving order", error: err.message });
