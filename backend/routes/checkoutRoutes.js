@@ -1,6 +1,6 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js"
-import { checkout, getOrders, deleteOrder, getProductOrders, getSingleOrder, updateOrderStatus, getOrderSummary } from "../controller/checkoutController.js";
+import { checkout, getOrders, deleteOrder, getProductOrders, getSingleOrder, updateOrderStatus, getOrderSummary, getOrdersSummaryTotals } from "../controller/checkoutController.js";
 
 const checkoutrouter = express.Router();
 
@@ -21,6 +21,9 @@ checkoutrouter.get("/order/:id", protect, getSingleOrder);
 
 //Get normal order Summary
 checkoutrouter.get("/order-summary", protect, getOrderSummary);
+
+//get order summary total
+checkoutrouter.get("/order-summary-total", protect, getOrdersSummaryTotals);
 
 //Update order status by id
 checkoutrouter.patch("/product-orders/:id", updateOrderStatus);
