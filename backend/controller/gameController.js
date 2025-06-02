@@ -68,11 +68,47 @@ const addGames = async (req, res) => {
 // Fetches all games from the database using gameModel.find({})
 const listGames = async (req, res) => {
     try {
-        const games = await gameModel.find({});
-        res.json({ success: true, games });
+        // Pagination parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
+        const search = req.query.search || '';
+        const skip = (page - 1) * limit;
+
+        // Search filter
+        const filter = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } }
+                ]
+            }
+            : {};
+
+        // Get total count
+        const totalGames = await gameModel.countDocuments(filter);
+        // Get paginated games
+        const games = await gameModel.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        res.json({
+            success: true,
+            games,
+            pagination: {
+                total: totalGames,
+                page,
+                limit,
+                totalPages: Math.ceil(totalGames / limit)
+            }
+        });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.message,
+            pagination: null
+        });
     }
 };
 
