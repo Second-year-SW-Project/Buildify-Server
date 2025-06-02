@@ -6,6 +6,7 @@ import {
   deleteProduct,
   getProducts,
   updateProduct,
+  getProductCountsByMainCategory,
 } from '../controller/productController.js';
 import { camelToSnakeMiddleware } from '../middleware/camelToSnakeMiddleware.js';
 import upload from '../middleware/multer.js';
@@ -46,5 +47,8 @@ prouter.get('/:id', getProductById);
 
 //Delete a product
 prouter.delete('/:id', deleteProduct);
+
+// Pie chart: product counts by main category
+prouter.get('/counts/by-main-category', getProductCountsByMainCategory);
 
 export default prouter;

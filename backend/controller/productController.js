@@ -368,3 +368,36 @@ export const getProductById = async (req, res) => {
     res.status(500).json({ Success: false, message: `Server error: ${error.message}` });
   }
 };
+
+// Pie chart data: Get product counts by main category (for dashboard)
+export const getProductCountsByMainCategory = async (req, res) => {
+  try {
+    // Define subcategories for each main category (sync with Category.jsx)
+    const subCategories = {
+      Necessary: [
+        "ram", "gpu", "processor", "motherboard", "storage", "casing", "power"
+      ],
+      Optional: [
+        "cooling", "keyboard", "mouse", "monitor", "ups", "expansion_network", "gamepad"
+      ],
+      Common: [
+        "laptop", "prebuild", "accessories", "externals", "cables_and_connectors"
+      ]
+    };
+    const { mainCategory } = req.query;
+    if (!mainCategory || !subCategories[mainCategory]) {
+      return res.status(400).json({ Success: false, message: 'Invalid main category' });
+    }
+    const subCats = subCategories[mainCategory];
+    // For each subcategory, count products
+    const counts = await Promise.all(
+      subCats.map(async (sub) => {
+        const count = await Product.countDocuments({ type: sub });
+        return { value: sub, count };
+      })
+    );
+    res.status(200).json({ Success: true, data: counts });
+  } catch (error) {
+    res.status(500).json({ Success: false, message: error.message });
+  }
+};
