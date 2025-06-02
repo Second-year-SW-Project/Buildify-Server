@@ -459,6 +459,107 @@ export const getOrderSummary = async (req, res) => {
         });
     }
 };
+
+// ...existing code...
+export const getOrdersSummaryTotals = async (req, res) => {
+    try {
+        const { filter = 'All' } = req.query;
+
+        // Date range logic
+        let dateFilter = {};
+        if (filter !== 'All') {
+            const now = new Date();
+            let start, end = new Date(now);
+            switch (filter) {
+                case 'today':
+                    start = new Date(now.setHours(0, 0, 0, 0));
+                    end = new Date(now.setHours(23, 59, 59, 999));
+                    break;
+                case 'yesterday':
+                    start = new Date(now.setDate(now.getDate() - 1));
+                    start.setHours(0, 0, 0, 0);
+                    end = new Date(now.setHours(23, 59, 59, 999));
+                    break;
+                case 'thisweek':
+                    const today = new Date();
+                    const day = today.getDay();
+                    const diffToMonday = day === 0 ? -6 : 1 - day;
+
+                    start = new Date(today);
+                    start.setDate(today.getDate() + diffToMonday);
+                    start.setHours(0, 0, 0, 0);
+
+                    end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    end.setHours(23, 59, 59, 999);
+                    break;
+                case 'lastweek': {
+                    const today = new Date();
+                    const day = today.getDay();
+
+                    // Calculate how many days to go back to last Monday
+                    const diffToLastMonday = day === 0 ? 13 : 7 + (day - 1);
+
+                    start = new Date(today);
+                    start.setDate(today.getDate() - diffToLastMonday);
+                    start.setHours(0, 0, 0, 0);
+
+                    end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    end.setHours(23, 59, 59, 999);
+                    break;
+                }
+
+                case 'thismonth':
+                    start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                    break;
+                case 'lastmonth': {
+                    const today = new Date();
+                    const year = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+                    const month = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+
+                    start = new Date(year, month, 1);
+                    end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+                    break;
+                }
+                default:
+                    start = null;
+                    end = null;
+            }
+            if (start && end) {
+                dateFilter = { createdAt: { $gte: start, $lte: end } };
+            }
+        }
+
+        // Total Orders (excluding cancelled/refunded)
+        const totalOrders = await Transaction.countDocuments({
+            status: { $nin: ['Canceled', 'Refunded'] },
+            ...dateFilter
+        });
+
+        // Pending Orders
+        const pendingOrders = await Transaction.countDocuments({
+            status: 'Pending',
+            ...dateFilter
+        });
+
+        // Total Price (Shipped/Delivered)
+        const totalPriceAgg = await Transaction.aggregate([
+            { $match: { status: { $in: ['Shipped', 'Delivered'] }, ...dateFilter } },
+            { $group: { _id: null, total: { $sum: "$total" } } }
+        ]);
+        const totalPrice = totalPriceAgg[0]?.total || 0;
+
+        res.status(200).json({
+            totalOrders,
+            pendingOrders,
+            totalPrice
+        });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to fetch order summary", error: err.message });
+    }
+};
 // export const getProductOrders = async (req, res) => {
 //   try {
 //       const userId = req.query.userId;
