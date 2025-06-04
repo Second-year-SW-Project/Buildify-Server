@@ -1,6 +1,6 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js"
-import { checkout, getOrders, deleteOrder, getProductOrders, getSingleOrder, updateOrderStatus, getOrderSummary, getOrdersSummaryTotals } from "../controller/checkoutController.js";
+import { checkout, getOrders, deleteOrder, getProductOrders, getSingleOrder, updateOrderStatus, getOrderSummary, getOrdersSummaryTotals, getBarChartSummary } from "../controller/checkoutController.js";
 
 const checkoutrouter = express.Router();
 
@@ -28,4 +28,7 @@ checkoutrouter.get("/order-summary-total", protect, getOrdersSummaryTotals);
 //Update order status by id
 checkoutrouter.patch("/product-orders/:id", updateOrderStatus);
 
-export default checkoutrouter; 
+//Get bar chart summary data for dashboard analytics
+checkoutrouter.get("/bar-chart-summary", getBarChartSummary);
+
+export default checkoutrouter;

@@ -560,35 +560,6 @@ export const getOrdersSummaryTotals = async (req, res) => {
         res.status(500).json({ message: "Failed to fetch order summary", error: err.message });
     }
 };
-// export const getProductOrders = async (req, res) => {
-//   try {
-//       const userId = req.query.userId;
-//       if (!userId) {
-//           return res.status(400).json({ message: "User ID is required" });
-//       }
-
-//       const orders = await Transaction.find({ user_id: userId }).sort({ createdAt: -1 });
-//       res.status(200).json(orders);
-//   } catch (err) {
-//       res.status(500).json({ message: "Failed to fetch orders", error: err.message });
-//   }
-// };
-
-
-
-// export const getSingleOrder = async (req, res) => {
-//     try {
-//         const order = await Transaction.findOne({ _id: req.params.id });
-
-//         if (!order) {
-//             return res.status(404).json({ message: "Order not found" });
-//         }
-
-//         res.status(200).json(order);
-//     } catch (err) {
-//         res.status(500).json({ message: "Error retrieving order", error: err.message });
-//     }
-// };
 
 export const getSingleOrder = async (req, res) => {
     try {
@@ -729,5 +700,121 @@ export const updateOrderStatus = async (req, res) => {
     } catch (error) {
         console.error("Error updating order status:", error);
         res.status(500).json({ message: "Failed to update order status" });
+    }
+};
+
+export const getBarChartSummary = async (req, res) => {
+    try {
+        const { filter = "thisweek" } = req.query;
+        let dateFilter = {};
+        if (filter !== 'All') {
+            const now = new Date();
+            let start, end;
+            switch (filter) {
+                case 'today':
+                    start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+                    end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                    break;
+                case 'yesterday': {
+                    const yest = new Date(now);
+                    yest.setDate(now.getDate() - 1);
+                    start = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 0, 0, 0, 0);
+                    end = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 23, 59, 59, 999);
+                    break;
+                }
+                case 'thisweek': {
+                    const day = now.getDay();
+                    const diffToMonday = day === 0 ? -6 : 1 - day;
+                    start = new Date(now);
+                    start.setDate(now.getDate() + diffToMonday);
+                    start.setHours(0, 0, 0, 0);
+                    end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    end.setHours(23, 59, 59, 999);
+                    break;
+                }
+                case 'lastweek': {
+                    const day = now.getDay();
+                    const diffToLastMonday = day === 0 ? 13 : 7 + (day - 1);
+                    start = new Date(now);
+                    start.setDate(now.getDate() - diffToLastMonday);
+                    start.setHours(0, 0, 0, 0);
+                    end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    end.setHours(23, 59, 59, 999);
+                    break;
+                }
+                case 'thismonth':
+                    start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+                    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                    break;
+                case 'lastmonth': {
+                    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    start = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1, 0, 0, 0, 0);
+                    end = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+                    break;
+                }
+                case 'thisyear':
+                    start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+                    end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+                    break;
+                case 'lastyear':
+                    start = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0);
+                    end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+                    break;
+                default:
+                    start = null;
+                    end = null;
+            }
+            if (start && end) {
+                dateFilter = { createdAt: { $gte: start, $lte: end } };
+            }
+        }
+        // Fetch orders in date range
+        const orders = await Transaction.find(dateFilter);
+        // Grouping logic (auto by day for week/month/year, by month for year, by day for week/month, by hour for today)
+        let groupBy;
+        if (filter === 'thisyear' || filter === 'lastyear') {
+            groupBy = (order) => {
+                const d = new Date(order.createdAt);
+                return d.toLocaleString('default', { month: 'long' });
+            };
+        } else if (filter === 'thismonth' || filter === 'lastmonth') {
+            // Group by day for month filters
+            groupBy = (order) => {
+                const d = new Date(order.createdAt);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            };
+        } else if (filter === 'today' || filter === 'yesterday') {
+            groupBy = (order) => {
+                const d = new Date(order.createdAt);
+                return `${d.getHours().toString().padStart(2, '0')}:00`;
+            };
+        } else {
+            // week
+            groupBy = (order) => {
+                const d = new Date(order.createdAt);
+                return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+            };
+        }
+        const buckets = {};
+        orders.forEach(order => {
+            const bucket = groupBy(order);
+            if (!buckets[bucket]) buckets[bucket] = [];
+            buckets[bucket].push(order);
+        });
+        const xLabels = Object.keys(buckets).sort();
+        console.log('BarChart xLabels (backend):', xLabels);
+        const sales = [], refund = [], cancle = [], other = [];
+        xLabels.forEach(label => {
+            const group = buckets[label];
+            sales.push(group.filter(o => o.status !== "Refunded" && o.status !== "Canceled").reduce((sum, o) => sum + (o.total || 0), 0));
+            refund.push(group.filter(o => o.status === "Refunded").reduce((sum, o) => sum + (o.total || 0), 0));
+            cancle.push(group.filter(o => o.status === "Canceled").reduce((sum, o) => sum + (o.total || 0), 0));
+            other.push(group.filter(o => o.status === "Refunded").reduce((sum, o) => sum + (o.deliveryCharge || 0), 0));
+        });
+        res.status(200).json({ xLabels, sales, refund, cancle, other });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to fetch bar chart summary", error: err.message });
     }
 };
