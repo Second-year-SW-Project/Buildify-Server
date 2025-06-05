@@ -10,6 +10,7 @@ import {
 } from '../controller/productController.js';
 import { camelToSnakeMiddleware } from '../middleware/camelToSnakeMiddleware.js';
 import upload from '../middleware/multer.js';
+import { validateObjectId } from '../middleware/validateObjectId.js';
 
 const prouter = express.Router();
 
@@ -26,6 +27,7 @@ prouter.post('/add',
 );
 //Update a product
 prouter.put('/:id',
+  validateObjectId,
   upload.fields([
     { name: 'image1', maxCount: 1 },
     { name: 'image2', maxCount: 1 },
@@ -43,10 +45,10 @@ prouter.get('/all', getProducts);
 prouter.get('/filter', getProductsByAttribute);
 
 //Get products by id
-prouter.get('/:id', getProductById);
+prouter.get('/:id', validateObjectId, getProductById);
 
 //Delete a product
-prouter.delete('/:id', deleteProduct);
+prouter.delete('/:id', validateObjectId, deleteProduct);
 
 // Pie chart: product counts by main category
 prouter.get('/counts/by-main-category', getProductCountsByMainCategory);

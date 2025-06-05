@@ -26,6 +26,49 @@ function cleanObject(obj) {
   return cleaned;
 }
 
+// Validation utility for product fields
+function validateProductFields(product, isUpdate = false) {
+  // Define base required fields for all products
+  const baseRequiredFields = [
+    'type', 'name', 'manufacturer', 'quantity', 'price'
+  ];
+  // Define unique fields for each type
+  const uniqueFieldsByType = {
+    processor: ['socket_type', 'core_count', 'thread_count', 'base_clock', 'boost_clock', 'tdp'],
+    ram: ['ram_type', 'ram_speed', 'ram_size'],
+    gpu: ['gpu_chipset', 'gpu_vram', 'gpu_cores', 'interface_type'],
+    motherboard: ['motherboard_chipset', 'motherboard_socket', 'form_factor', 'ram_slots', 'max_ram', 'memory_types', 'pcie_slot_type', 'pcie_version', 'storage_type'],
+    storage: ['storage_type', 'storage_capacity'],
+    casing: ['form_factor', 'supported_motherboard_sizes'],
+    power: ['wattage', 'efficiency_rating', 'modular_type'],
+    cooling: ['cooler_type', 'supported_socket', 'max_tdp', 'height'],
+    keyboard: ['keyboard_type', 'connectivity'],
+    mouse: ['connectivity'],
+    monitor: ['display_size', 'resolution', 'refresh_rate', 'panel_type', 'monitor_type'],
+    laptop: ['laptop_type', 'cpu', 'ram', 'storage', 'graphic_card', 'display_size', 'refresh_rate'],
+    prebuild: ['cpu', 'gpu', 'ram', 'storage', 'desktop_type'],
+    expansion_network: ['component_type', 'interface_type'],
+    gamepad: ['connectivity'],
+    accessories: [],
+    externals: [],
+    cables_and_connectors: []
+  };
+  const errors = [];
+  const type = product.type;
+  if (!type || !uniqueFieldsByType[type]) {
+    errors.push('Invalid or missing product type');
+    return errors;
+  }
+  // Merge base and unique fields
+  const requiredFields = [...baseRequiredFields, ...uniqueFieldsByType[type]];
+  requiredFields.forEach((field) => {
+    if (!isUpdate && (product[field] === undefined || product[field] === null || product[field] === '')) {
+      errors.push(`Missing required field: ${field}`);
+    }
+  });
+  return errors;
+}
+
 // Create a new product
 export const createProduct = async (req, res) => {
   try {
@@ -33,12 +76,14 @@ export const createProduct = async (req, res) => {
     try {
       product = JSON.parse(req.body.product || '{}');
     } catch (error) {
-      console.error('Error parsing req.body.product:', error.message); // Debugging
       return res.status(400).json({ Success: false, message: 'Invalid product data format' });
     }
-
-    // Remove empty attributes
     product = cleanObject(product);
+    // Validate product fields
+    const validationErrors = validateProductFields(product);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ Success: false, message: 'Validation error', errors: validationErrors });
+    }
 
     // Initialize images
     const images = [
@@ -97,6 +142,24 @@ export const createProduct = async (req, res) => {
 // Get all products
 export const getProducts = async (req, res) => {
   try {
+    // Validate page
+    if (req.query.page && (isNaN(parseInt(req.query.page)) || parseInt(req.query.page) <= 0)) {
+      return res.status(400).json({ Success: false, message: "Invalid page number" });
+    }
+    // Validate limit
+    if (req.query.limit && (isNaN(parseInt(req.query.limit)) || parseInt(req.query.limit) <= 0)) {
+      return res.status(400).json({ Success: false, message: "Invalid limit" });
+    }
+    // Validate statusFilter
+    const allowedStatus = ['In Stock', 'Low Stock', 'Out of Stock'];
+    if (req.query.statusFilter && !allowedStatus.includes(req.query.statusFilter)) {
+      return res.status(400).json({ Success: false, message: "Invalid status filter" });
+    }
+    // Validate date
+    if (req.query.date && isNaN(new Date(req.query.date).getTime())) {
+      return res.status(400).json({ Success: false, message: "Invalid date format" });
+    }
+
     // Extract search query and pagination parameters
     const {
       search,
@@ -197,9 +260,17 @@ export const getProducts = async (req, res) => {
 // Update a product
 export const updateProduct = async (req, res) => {
   try {
-
-    //Parse the product data from the body
     let product = JSON.parse(req.body.product || '{}');
+    const cleanedProduct = cleanObject(product);
+    //Prevents modification of the Id by remove it
+    delete cleanedProduct._id;
+    // Validate product fields (allow partial for update, but check type if present)
+    if (cleanedProduct.type) {
+      const validationErrors = validateProductFields(cleanedProduct, true);
+      if (validationErrors.length > 0) {
+        return res.status(400).json({ Success: false, message: 'Validation error', errors: validationErrors });
+      }
+    }
 
     //Extrat 4 images from the files
     const images = [
@@ -208,10 +279,6 @@ export const updateProduct = async (req, res) => {
       req.files.image3?.[0],
       req.files.image4?.[0],
     ].filter(Boolean);
-
-    const cleanedProduct = cleanObject(product);
-    //Prevents modification of the Id by remove it
-    delete cleanedProduct._id;
 
     //Fetch the existing product
     const existingProduct = await Product.findById(req.params.id);
@@ -263,13 +330,8 @@ export const updateProduct = async (req, res) => {
 // Delete a product
 export const deleteProduct = async (req, res) => {
   try {
-
+    // ID validation is now handled by middleware
     const { id } = req.params;
-
-    // Check if ID is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ Success: false, message: 'Invalid product ID' });
-    }
 
     // Find and delete the product
     const existingProduct = await Product.findByIdAndDelete(id);
@@ -305,11 +367,15 @@ export const deleteProduct = async (req, res) => {
 // Get products by attribute
 export const getProductsByAttribute = async (req, res) => {
   try {
+    // Validate that at least one attribute/value pair is provided
+    const attributes = Object.keys(req.query).filter(key => key.startsWith('attribute'));
+    if (attributes.length === 0) {
+      return res.status(400).json({ Success: false, message: 'No attribute filters provided' });
+    }
     // Extract query parameters
     const query = {};
-    // Extract search query and initialize query object
-    const attributes = Object.keys(req.query).filter(key => key.startsWith('attribute'));
 
+    // Extract search query and initialize query object
     attributes.forEach((attrKey, index) => {
       const valueKey = `value${index === 0 ? '' : index + 1}`;
       const attr = req.query[attrKey];
@@ -343,14 +409,9 @@ export const getProductsByAttribute = async (req, res) => {
 // Get a product by ID
 export const getProductById = async (req, res) => {
   try {
+    // ID validation is now handled by middleware
     const { id } = req.params; // Extracts Product Id
     console.log(`Fetching product with ID: ${id}`); // Debugging
-
-    // Check if ID is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.log(`Invalid product ID format: ${id}`);
-      return res.status(400).json({ Success: false, message: `Invalid product ID: ${id}` });
-    }
 
     // Fetch product
     const s_product = await Product.findById(id);
@@ -372,7 +433,7 @@ export const getProductById = async (req, res) => {
 // Pie chart data: Get product counts by main category (for dashboard)
 export const getProductCountsByMainCategory = async (req, res) => {
   try {
-    // Define subcategories for each main category (sync with Category.jsx)
+    // Validate mainCategory
     const subCategories = {
       Necessary: [
         "ram", "gpu", "processor", "motherboard", "storage", "casing", "power"
