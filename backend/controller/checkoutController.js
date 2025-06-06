@@ -103,7 +103,7 @@ export const checkout = async (req, res) => {
 };
 
 
-export const getOrders = async (req, res) => {
+export const getOrderList = async (req, res) => {
     try {
         const {
             search,
