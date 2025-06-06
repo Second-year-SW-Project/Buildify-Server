@@ -34,25 +34,25 @@ function validateProductFields(product, isUpdate = false) {
   ];
   // Define unique fields for each type
   const uniqueFieldsByType = {
-    processor: ['socket_type', 'core_count', 'thread_count', 'base_clock', 'boost_clock', 'tdp'],
-    ram: ['ram_type', 'ram_speed', 'ram_size'],
-    gpu: ['gpu_chipset', 'gpu_vram', 'gpu_cores', 'interface_type'],
-    motherboard: ['motherboard_chipset', 'motherboard_socket', 'form_factor', 'ram_slots', 'max_ram', 'memory_types', 'pcie_slot_type', 'pcie_version', 'storage_type'],
-    storage: ['storage_type', 'storage_capacity'],
-    casing: ['form_factor', 'supported_motherboard_sizes'],
+    processor: ['socket_type', 'tdp', 'core_count', 'thread_count', 'base_clock', 'boost_clock'],
+    ram: ['memory_type', 'memory_speed', 'memory_capacity', 'tdp'],
+    gpu: ['interface_type', 'length', 'power_connectors', 'vram', 'gpu_chipset', 'gpu_cores', 'tdp'],
+    motherboard: ['motherboard_chipset', 'socket_type', 'form_factor', 'ram_slots', 'max_ram', 'supported_memory_types', 'tdp', 'pcie_slots', 'pcie_version', 'storage_interfaces'],
+    storage: ['storage_type', 'storage_capacity', 'tdp'],
+    casing: ['form_factor', 'supported_motherboard_sizes', 'max_gpu_length', 'max_cooler_height'],
     power: ['wattage', 'efficiency_rating', 'modular_type'],
-    cooling: ['cooler_type', 'supported_socket', 'max_tdp', 'height'],
+    cooling: ['cooler_type', 'supported_socket', 'max_tdp', 'height', 'tdp'],
     keyboard: ['keyboard_type', 'connectivity'],
     mouse: ['connectivity'],
     monitor: ['display_size', 'resolution', 'refresh_rate', 'panel_type', 'monitor_type'],
     laptop: ['laptop_type', 'cpu', 'ram', 'storage', 'graphic_card', 'display_size', 'refresh_rate'],
-    prebuild: ['cpu', 'gpu', 'ram', 'storage', 'desktop_type'],
-    expansion_network: ['component_type', 'interface_type'],
+    prebuild: ['cpu', 'cpu_cores', 'cpu_threads', 'cpu_base_clock', 'cpu_boost_clock', 'graphic_card', 'gpu_series', 'gpu_vram', 'gpu_boost_clock', 'prebuild_gpu_cores', 'ram_size', 'ram_speed', 'ram_type', 'storage', 'desktop_type'],
+    expansion_network: ['interface_type', 'component_type'],
     gamepad: ['connectivity'],
     accessories: [],
     externals: [],
     cables_and_connectors: []
-  };
+};
   const errors = [];
   const type = product.type;
   if (!type || !uniqueFieldsByType[type]) {

@@ -110,6 +110,7 @@ const productSchema = new mongoose.Schema(
     gpu_vram: { type: String, required: false },
     gpu_boost_clock: { type: String, required: false },
     gpu_cores: { type: String, required: false },
+    prebuild_gpu_cores: { type: String, required: false },
     ram_size: { type: String, required: false },
     ram_speed: { type: String, required: false },
     ram_type: { type: String, required: false },
