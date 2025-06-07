@@ -1,12 +1,12 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js"
-import { isAdmin } from "../middleware/roleMiddleware.js";
+import { isAdmin, isUser } from "../middleware/roleMiddleware.js";
 import { checkout, getOrderList, deleteOrder, getProductOrders, getSingleOrder, updateOrderStatus, getOrderSummary, getOrdersSummaryTotals, getBarChartSummary } from "../controller/checkoutController.js";
 
 const checkoutrouter = express.Router();
 
 //Create Order
-checkoutrouter.post("/payment", protect, checkout);
+checkoutrouter.post("/payment", protect, isUser, checkout);
 
 //Get all orders
 checkoutrouter.get("/payment", protect, isAdmin, getOrderList);
