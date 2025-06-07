@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema(
     firstName: { type: String },
     lastName: { type: String },
     address: { type: String },
+    district: { type: String },
     city: { type: String },
     profilePicture: { type: String, default: "" },
     password: {

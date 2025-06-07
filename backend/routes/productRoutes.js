@@ -7,6 +7,7 @@ import {
   getProducts,
   updateProduct,
   getProductCountsByMainCategory,
+  getManufacturersByCategory,
 } from '../controller/productController.js';
 import { camelToSnakeMiddleware } from '../middleware/camelToSnakeMiddleware.js';
 import upload from '../middleware/multer.js';
@@ -40,6 +41,8 @@ prouter.put('/:id',
 
 //Get all products with queries
 prouter.get('/all', getProducts);
+
+prouter.get('/manufacturers', getManufacturersByCategory);
 
 //Get products by attribute
 prouter.get('/filter', getProductsByAttribute);
