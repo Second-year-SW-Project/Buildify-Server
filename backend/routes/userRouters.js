@@ -1,9 +1,11 @@
 import express from "express";
-import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,
+import {
+  forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,
   generate2FASecret,
   enable2FA,
-  disable2FA, 
-  updatestatus} from "../controller/authController.js";
+  disable2FA,
+  updatestatus
+} from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -18,15 +20,15 @@ router.post('/login', login);
 router.post('/logout', logout);
 router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
-router.post('/update-profile',isAuthenticated, updateProfile);
+router.post('/update-profile', isAuthenticated, updateProfile);
 
 router.post('/change-password', authenticateForPassword, changePassword);
 
 // 2FA routes
-router.post('/2fa/generate',isAuthenticated, generate2FASecret);
+router.post('/2fa/generate', isAuthenticated, generate2FASecret);
 router.post('/2fa/enable', isAuthenticated, enable2FA);
 router.post('/2fa/disable', isAuthenticated, disable2FA);
-router.put('/update-status/:userId',isAuthenticated,updatestatus);
+router.put('/update-status/:userId', isAuthenticated, updatestatus);
 
 
 
@@ -149,7 +151,7 @@ router.get("/", async (req, res) => {
 
 //admin side navbar
 router.get('/:userId', async (req, res) => {
-  const user = await User.findById(req.params.userId).select('name email profilePicture');
+  const user = await User.findById(req.params.userId).select('name email profilePicture Role');
   if (!user) return res.status(404).json({ message: 'User not found' });
 
   res.status(200).json({ user });
