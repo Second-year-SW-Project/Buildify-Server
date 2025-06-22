@@ -6,7 +6,7 @@ import { checkout, getOrderList, deleteOrder, getProductOrders, getSingleOrder, 
 const checkoutrouter = express.Router();
 
 //Create Order
-checkoutrouter.post("/payment", protect, isUser, checkout);
+checkoutrouter.post("/payment", checkout);
 
 //Get all orders
 checkoutrouter.get("/payment", protect, isAdmin, getOrderList);

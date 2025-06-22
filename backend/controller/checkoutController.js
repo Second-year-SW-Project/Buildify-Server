@@ -492,12 +492,12 @@ export const getOrdersSummaryTotals = async (req, res) => {
                     end = new Date(start);
                     end.setDate(start.getDate() + 6);
                     end.setHours(23, 59, 59, 999);
+                    console.log('This week start:', start, 'end:', end);
                     break;
                 case 'lastweek': {
                     const today = new Date();
                     const day = today.getDay();
 
-                    // Calculate how many days to go back to last Monday
                     const diffToLastMonday = day === 0 ? 13 : 7 + (day - 1);
 
                     start = new Date(today);
@@ -528,7 +528,9 @@ export const getOrdersSummaryTotals = async (req, res) => {
                     end = null;
             }
             if (start && end) {
-                dateFilter = { createdAt: { $gte: start, $lte: end } };
+                dateFilter = {
+                    createdAt: { $gte: start, $lte: end }
+                };
             }
         }
 
@@ -546,7 +548,7 @@ export const getOrdersSummaryTotals = async (req, res) => {
 
         // Total Price (Shipped/Delivered)
         const totalPriceAgg = await Transaction.aggregate([
-            { $match: { status: { $in: ['Shipped', 'Delivered'] }, ...dateFilter } },
+            { $match: { status: { $in: ['Successful'] }, ...dateFilter } },
             { $group: { _id: null, total: { $sum: "$total" } } }
         ]);
         const totalPrice = totalPriceAgg[0]?.total || 0;
@@ -723,25 +725,34 @@ export const getBarChartSummary = async (req, res) => {
                     break;
                 }
                 case 'thisweek': {
-                    const day = now.getDay();
+                    const today = new Date();
+                    const day = today.getDay();
                     const diffToMonday = day === 0 ? -6 : 1 - day;
-                    start = new Date(now);
-                    start.setDate(now.getDate() + diffToMonday);
+
+                    start = new Date(today);
+                    start.setDate(today.getDate() + diffToMonday);
                     start.setHours(0, 0, 0, 0);
+
                     end = new Date(start);
                     end.setDate(start.getDate() + 6);
                     end.setHours(23, 59, 59, 999);
+                    console.log('This week start:', start, 'end:', end);
                     break;
                 }
                 case 'lastweek': {
-                    const day = now.getDay();
+                    const today = new Date();
+                    const day = today.getDay();
+
                     const diffToLastMonday = day === 0 ? 13 : 7 + (day - 1);
-                    start = new Date(now);
-                    start.setDate(now.getDate() - diffToLastMonday);
+
+                    start = new Date(today);
+                    start.setDate(today.getDate() - diffToLastMonday);
                     start.setHours(0, 0, 0, 0);
+
                     end = new Date(start);
                     end.setDate(start.getDate() + 6);
                     end.setHours(23, 59, 59, 999);
+                    console.log('This last start:', start, 'end:', end);
                     break;
                 }
                 case 'thismonth':
@@ -780,11 +791,15 @@ export const getBarChartSummary = async (req, res) => {
                 return d.toLocaleString('default', { month: 'long' });
             };
         } else if (filter === 'thismonth' || filter === 'lastmonth') {
-            // Group by day for month filters
             groupBy = (order) => {
                 const d = new Date(order.createdAt);
                 return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             };
+            // } else if (filter === 'thisweek' || filter === 'lastweek') {
+            //     groupBy = (order) => {
+            //         const d = new Date(order.createdAt);
+            //         return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+            //     };
         } else if (filter === 'today' || filter === 'yesterday') {
             groupBy = (order) => {
                 const d = new Date(order.createdAt);
@@ -806,14 +821,20 @@ export const getBarChartSummary = async (req, res) => {
         const xLabels = Object.keys(buckets).sort();
         console.log('BarChart xLabels (backend):', xLabels);
         const sales = [], refund = [], cancle = [], other = [];
+        // New: rawCancleOrders for frontend filtering
+        const rawCancleOrders = {};
         xLabels.forEach(label => {
             const group = buckets[label];
             sales.push(group.filter(o => o.status !== "Refunded" && o.status !== "Canceled").reduce((sum, o) => sum + (o.total || 0), 0));
             refund.push(group.filter(o => o.status === "Refunded").reduce((sum, o) => sum + (o.total || 0), 0));
-            cancle.push(group.filter(o => o.status === "Canceled").reduce((sum, o) => sum + (o.total || 0), 0));
+            // For cancled, collect the actual orders for frontend filtering
+            const cancledOrders = group.filter(o => o.status === "Canceled");
+            cancle.push(cancledOrders.reduce((sum, o) => sum + (o.total || 0), 0));
             other.push(group.filter(o => o.status === "Refunded").reduce((sum, o) => sum + (o.deliveryCharge || 0), 0));
+            // Store the canceled orders with total and stepTimestamps.Successful
+            rawCancleOrders[label] = cancledOrders.map(o => ({ total: o.total, stepTimestamps: o.stepTimestamps }));
         });
-        res.status(200).json({ xLabels, sales, refund, cancle, other });
+        res.status(200).json({ xLabels, sales, refund, cancle, other, rawCancleOrders });
     } catch (err) {
         res.status(500).json({ message: "Failed to fetch bar chart summary", error: err.message });
     }

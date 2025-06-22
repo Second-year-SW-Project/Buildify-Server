@@ -12,6 +12,8 @@ import {
 import { camelToSnakeMiddleware } from '../middleware/camelToSnakeMiddleware.js';
 import upload from '../middleware/multer.js';
 import { validateObjectId } from '../middleware/validateObjectId.js';
+import protect from '../middleware/authMiddleware.js';
+import { isAdmin } from '../middleware/roleMiddleware.js';
 
 const prouter = express.Router();
 
@@ -24,6 +26,8 @@ prouter.post('/add',
     { name: 'image4', maxCount: 1 },
   ]),
   camelToSnakeMiddleware,
+  protect,
+  isAdmin,
   createProduct
 );
 //Update a product
@@ -36,11 +40,14 @@ prouter.put('/:id',
     { name: 'image4', maxCount: 1 },
   ]),
   camelToSnakeMiddleware,
+  validateObjectId,
+  protect,
+  isAdmin,
   updateProduct
 );
 
 //Get all products with queries
-prouter.get('/all', getProducts);
+prouter.get('/all', protect, isAdmin, getProducts);
 
 prouter.get('/manufacturers', getManufacturersByCategory);
 
@@ -51,9 +58,9 @@ prouter.get('/filter', getProductsByAttribute);
 prouter.get('/:id', validateObjectId, getProductById);
 
 //Delete a product
-prouter.delete('/:id', validateObjectId, deleteProduct);
+prouter.delete('/:id', protect, isAdmin, validateObjectId, deleteProduct);
 
 // Pie chart: product counts by main category
-prouter.get('/counts/by-main-category', getProductCountsByMainCategory);
+prouter.get('/counts/by-main-category', protect, isAdmin, getProductCountsByMainCategory);
 
 export default prouter;
