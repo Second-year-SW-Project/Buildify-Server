@@ -37,7 +37,7 @@ function validateProductFields(product, isUpdate = false) {
     processor: ['socket_type', 'tdp', 'core_count', 'thread_count', 'base_clock', 'boost_clock'],
     ram: ['memory_type', 'memory_speed', 'memory_capacity', 'tdp'],
     gpu: ['interface_type', 'length', 'power_connectors', 'vram', 'gpu_chipset', 'gpu_cores', 'tdp'],
-    motherboard: ['motherboard_chipset', 'socket_type', 'form_factor', 'ram_slots', 'max_ram', 'supported_memory_types', 'tdp', 'pcie_slots', 'pcie_version', 'storage_interfaces'],
+    motherboard: ['motherboard_chipset', 'socket_type', 'form_factor', 'ram_slots', 'max_ram', 'supported_memory_types', 'tdp', 'pcie_slots', 'storage_interfaces'],
     storage: ['storage_type', 'storage_capacity', 'tdp'],
     casing: ['form_factor', 'supported_motherboard_sizes', 'max_gpu_length', 'max_cooler_height'],
     power: ['wattage', 'efficiency_rating', 'modular_type'],

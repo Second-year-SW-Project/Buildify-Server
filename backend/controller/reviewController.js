@@ -1,11 +1,14 @@
 import Review from '../model/ReviewModel.js';
 import {Transaction} from '../model/TransactionModel.js'; 
+import Product from "../model/productModel.js";
 import mongoose from "mongoose";
 
 export const createReview = async (req, res) => {
   try {
     const { productId, orderId, rating, comment } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.id;  
+
+    console.log("Logged in user id:", userId); // Debug log
 
     // Validate ObjectId format
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
@@ -52,6 +55,56 @@ export const createReview = async (req, res) => {
     res.status(500).json({ message: "An error occurred while creating the review." });
   }
 };
+// export const createReview = async (req, res) => {
+//   try {
+//     const { productId, orderId, rating, comment } = req.body;
+//     const userId = req.user.id;
+
+//     // Validate ObjectId format
+//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
+//       return res.status(400).json({ message: "Invalid order ID format." });
+//     }
+
+//     // Fetch order
+//     const order = await Transaction.findById(orderId);
+//     if (!order) {
+//       return res.status(404).json({ message: "Order not found." });
+//     }
+
+//     // Check if order belongs to this user
+//     if (!order.user_id || order.user_id.toString() !== userId.toString()) {
+//       return res.status(403).json({ message: "You have not purchased this product." });
+//     }
+
+//     // Check if product is in order items
+//     const hasProduct = order.items.some(item => item._id.toString() === productId.toString());
+//     if (!hasProduct) {
+//       return res.status(403).json({ message: "Product not found in your order." });
+//     }
+
+//     // Check for existing review (for this product, order, and user)
+//     const existingReview = await Review.findOne({ productId, orderId, userId });
+//     if (existingReview) {
+//       return res.status(400).json({ message: "You have already reviewed this product in this order." });
+//     }
+
+//     // Save new review
+//     const review = new Review({
+//       productId,
+//       orderId,
+//       userId,
+//       rating,
+//       comment,
+//     });
+
+//     await review.save();
+//     res.status(201).json(review);
+
+//   } catch (err) {
+//     console.error("Error in creating review:", err);
+//     res.status(500).json({ message: "An error occurred while creating the review." });
+//   }
+// };
 
 
 // Get reviews for a product
@@ -77,12 +130,88 @@ export const getProductReviews = async (req, res) => {
 // Get logged-in user's reviews
 export const getMyReviews = async (req, res) => {
   try {
-    const reviews = await Review.find({ userId: req.user.id }).populate('productId');
-    res.status(200).json(reviews);
+    const userId = req.user.id;
+
+    // Fetch transactions for user
+    const transactions = await Transaction.find({ user_id: userId });
+
+    // Get all product IDs from transactions
+    const purchasedProductIds = transactions.flatMap((tx) =>
+      tx.items.map((item) => item._id)
+    );
+
+    // Fetch all reviews by user
+    const reviews = await Review.find({ userId: userId });
+
+    // Fetch product details for purchased products
+    const products = await Product.find({
+      _id: { $in: purchasedProductIds },
+    }).select("name price img_urls");
+
+    // Combine: mark reviewed status
+    const result = products.map((product) => {
+      const review = reviews.find(
+        (r) => r.productId === product._id.toString()
+      );
+      return {
+        productId: product._id,
+        name: product.name,
+        price: product.price,
+        product_image: product.img_urls?.[0]?.url || null,
+        reviewId: review?._id || null,
+        rating: review?.rating || null,
+        comment: review?.comment || null,
+        createdAt: review?.createdAt || null,
+        status: review ? "Reviewed" : "To Review",
+      };
+    });
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// export const getMyReviews = async (req, res) => {
+//   try {
+//     const reviews = await Review.aggregate([
+//       {
+//         $match: { userId: new mongoose.Types.ObjectId(req.user.id) }
+//       },
+//       {
+//         $addFields: {
+//           productObjectId: { $toObjectId: "$productId" }
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: "products", 
+//           localField: "productObjectId",
+//           foreignField: "_id",
+//           as: "productDetails"
+//         }
+//       },
+//       { $unwind: "$productDetails" },
+//       {
+//         $project: {
+//           rating: 1,
+//           comment: 1,
+//           createdAt: 1,
+//           productId: 1,
+//           "productDetails.name": 1,
+//           "productDetails.price": 1,
+//           "productDetails.img_urls.url": 1
+//         }
+//       }
+//     ]);
+
+//     res.status(200).json(reviews);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
 
 // Update review
 export const updateReview = async (req, res) => {

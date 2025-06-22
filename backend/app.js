@@ -19,6 +19,7 @@ import buildRouter from './routes/buildRouter.js';
 import gameRouter from './routes/gameRouter.js';
 import checkoutrouter from './routes/checkoutRoutes.js';
 import configurePassport from './config/passport.js';
+import buildTransactionRouter from './routes/buildTransactionRoutes.js';
 
 // Initialize Express app
 const app = express();
@@ -88,6 +89,9 @@ app.use('/api/invoices', invoicerouter);
 
 //Comment Routes
 app.use('/api/comment', commentrouter);
+
+// Build Transaction Routes
+app.use('/api/build-transactions', buildTransactionRouter);
 
 // Handle Unmatched Routes
 app.all('*', (req, res, next) => {

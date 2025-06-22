@@ -298,7 +298,7 @@ export const resetPassword = catchAsync(async (req, res, next) => {
 export const updateProfile = async (req, res) => {
   try {
     // Allowed fields validation
-    const allowedUpdates = ['name', 'email', 'firstName', 'lastName', 'address', 'district', 'city', 'profilePicture'];
+    const allowedUpdates = ['name', 'email', 'firstName', 'lastName', 'address', 'province', 'district', 'profilePicture'];
     const updates = Object.keys(req.body);
     const invalidFields = updates.filter(field => !allowedUpdates.includes(field));
     if (invalidFields.length > 0) {

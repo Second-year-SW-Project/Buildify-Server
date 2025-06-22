@@ -16,12 +16,16 @@ const addBuild = async (req, res) => {
       components: Array.isArray(buildData.components) ? 'array' : typeof buildData.components
     });
     
-    // Validate required fields
-    if (!buildData.name || (!buildData.componentsPrice && !buildData.totalPrice)) {
+    // Validate required fields - use strict checks for numbers (including 0)
+    const hasPricing = (buildData.componentsPrice !== undefined && buildData.componentsPrice !== null) || 
+                      (buildData.totalPrice !== undefined && buildData.totalPrice !== null);
+    
+    if (!buildData.name || !hasPricing) {
       console.log('Missing required fields:', {
         name: !buildData.name,
-        componentsPrice: !buildData.componentsPrice,
-        totalPrice: !buildData.totalPrice,
+        componentsPrice: buildData.componentsPrice,
+        totalPrice: buildData.totalPrice,
+        hasPricing: hasPricing,
         nameValue: buildData.name,
         componentsPriceValue: buildData.componentsPrice,
         totalPriceValue: buildData.totalPrice
@@ -31,7 +35,7 @@ const addBuild = async (req, res) => {
         message: 'Missing required fields',
         missingFields: {
           name: !buildData.name,
-          price: !buildData.componentsPrice && !buildData.totalPrice
+          price: !hasPricing
         },
         receivedData: {
           name: buildData.name,
@@ -41,8 +45,9 @@ const addBuild = async (req, res) => {
       });
     }
 
-    // Use totalPrice if componentsPrice is not provided
-    if (!buildData.componentsPrice && buildData.totalPrice) {
+    // Use totalPrice if componentsPrice is not provided or is null/undefined
+    if ((buildData.componentsPrice === undefined || buildData.componentsPrice === null) && 
+        (buildData.totalPrice !== undefined && buildData.totalPrice !== null)) {
       buildData.componentsPrice = buildData.totalPrice;
     }
 
