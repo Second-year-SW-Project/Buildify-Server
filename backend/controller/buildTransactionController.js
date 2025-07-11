@@ -331,17 +331,29 @@ export const checkoutBuildTransaction = async (req, res) => {
             });
         }
 
-        // Fetch the build details
-        const build = await buildModel.findById(buildData.buildId);
-        if (!build) {
-            return res.status(404).json({ message: "Build not found" });
+        // Fetch the build details - skip for temporary builds
+        let build = null;
+        let buildImage = "";
+        
+        // Check if this is a temporary build (created via "Continue Purchase" without saving)
+        const isTemporaryBuild = buildData.buildId && buildData.buildId.toString().startsWith('temp_build_');
+        
+        if (!isTemporaryBuild) {
+            // Only try to fetch from database if it's not a temporary build
+            build = await buildModel.findById(buildData.buildId);
+            if (!build) {
+                return res.status(404).json({ message: "Build not found" });
+            }
+            buildImage = build.image;
         }
 
-        console.log('Checkout - Build image sources:', {
+        console.log('Checkout - Build info:', {
+            'isTemporaryBuild': isTemporaryBuild,
+            'buildData.buildId': buildData.buildId,
+            'build found': !!build,
             'buildData.image': buildData.image,
             'buildData.buildImage': buildData.buildImage,
-            'build.image': build.image,
-            'buildData keys': Object.keys(buildData),
+            'build.image': buildImage,
             'customBuildItem.image': customBuildItem.image
         });
 
@@ -385,7 +397,7 @@ export const checkoutBuildTransaction = async (req, res) => {
             userAddress: customerAddress,
             warrantyPeriod: 24,
             orderId: buildData.buildId,
-            buildImage: buildData.image || buildData.buildImage || build.image || 
+            buildImage: buildData.image || buildData.buildImage || buildImage || 
                         customBuildItem.image ||
                         (() => {
                             // Try to get image from case component
@@ -416,11 +428,13 @@ export const checkoutBuildTransaction = async (req, res) => {
 
         await buildTransaction.save();
 
-        // Update the original build with transaction reference
-        await buildModel.findByIdAndUpdate(buildData.buildId, { 
-            orderId: buildTransaction._id,
-            buildStatus: 'confirmed'
-        });
+        // Update the original build with transaction reference (only for saved builds)
+        if (!isTemporaryBuild) {
+            await buildModel.findByIdAndUpdate(buildData.buildId, { 
+                orderId: buildTransaction._id,
+                buildStatus: 'confirmed'
+            });
+        }
 
         console.log('Build transaction created successfully:', buildTransaction._id);
 
