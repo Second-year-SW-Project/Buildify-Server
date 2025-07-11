@@ -127,17 +127,19 @@ export const getProductReviews = async (req, res) => {
   };
   
 
-// Get logged-in user's reviews
-export const getMyReviews = async (req, res) => {
+  export const getMyReviews = async (req, res) => {
   try {
     const userId = req.user.id;
 
     // Fetch transactions for user
     const transactions = await Transaction.find({ user_id: userId });
 
-    // Get all product IDs from transactions
-    const purchasedProductIds = transactions.flatMap((tx) =>
-      tx.items.map((item) => item._id)
+    // Build a flat array of purchased items with their order (transaction) id
+    const purchasedItems = transactions.flatMap((tx) =>
+      tx.items.map((item) => ({
+        productId: item._id.toString(),
+        orderId: tx._id.toString(),
+      }))
     );
 
     // Fetch all reviews by user
@@ -145,15 +147,21 @@ export const getMyReviews = async (req, res) => {
 
     // Fetch product details for purchased products
     const products = await Product.find({
-      _id: { $in: purchasedProductIds },
+      _id: { $in: purchasedItems.map((i) => i.productId) },
     }).select("name price img_urls");
 
     // Combine: mark reviewed status
     const result = products.map((product) => {
+      const purchaseInfo = purchasedItems.find(
+        (i) => i.productId === product._id.toString()
+      );
+
       const review = reviews.find(
         (r) => r.productId === product._id.toString()
       );
+
       return {
+        orderId: purchaseInfo?.orderId || null, // <- add orderId here
         productId: product._id,
         name: product.name,
         price: product.price,
@@ -171,6 +179,51 @@ export const getMyReviews = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// // Get logged-in user's reviews
+// export const getMyReviews = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+
+//     // Fetch transactions for user
+//     const transactions = await Transaction.find({ user_id: userId });
+
+//     // Get all product IDs from transactions
+//     const purchasedProductIds = transactions.flatMap((tx) =>
+//       tx.items.map((item) => item._id)
+//     );
+
+//     // Fetch all reviews by user
+//     const reviews = await Review.find({ userId: userId });
+
+//     // Fetch product details for purchased products
+//     const products = await Product.find({
+//       _id: { $in: purchasedProductIds },
+//     }).select("name price img_urls");
+
+//     // Combine: mark reviewed status
+//     const result = products.map((product) => {
+//       const review = reviews.find(
+//         (r) => r.productId === product._id.toString()
+//       );
+//       return {
+//         productId: product._id,
+//         name: product.name,
+//         price: product.price,
+//         product_image: product.img_urls?.[0]?.url || null,
+//         reviewId: review?._id || null,
+//         rating: review?.rating || null,
+//         comment: review?.comment || null,
+//         createdAt: review?.createdAt || null,
+//         status: review ? "Reviewed" : "To Review",
+//       };
+//     });
+
+//     res.status(200).json(result);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 
 // export const getMyReviews = async (req, res) => {
