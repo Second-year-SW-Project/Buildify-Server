@@ -7,13 +7,27 @@ const addBuild = async (req, res) => {
   try {
     const buildData = req.body; // Extracts build data from request body
     
+    // Ensure the build is associated with the authenticated user
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Authentication required to save builds' 
+      });
+    }
+    
+    // Set the userId from the authenticated user
+    buildData.userId = req.user._id.toString();
+    buildData.userName = req.user.name;
+    buildData.userEmail = req.user.email;
+    
     // Log incoming data for debugging
     console.log('Received build data:', JSON.stringify(buildData, null, 2));
     console.log('Data types:', {
       name: typeof buildData.name,
       componentsPrice: typeof buildData.componentsPrice,
       totalPrice: typeof buildData.totalPrice,
-      components: Array.isArray(buildData.components) ? 'array' : typeof buildData.components
+      components: Array.isArray(buildData.components) ? 'array' : typeof buildData.components,
+      userId: buildData.userId
     });
     
     // Validate required fields - use strict checks for numbers (including 0)
@@ -177,14 +191,24 @@ const updateBuild = async (req, res) => {
     const { id } = req.params; // Extracts the build ID from the request parameters
     const updateData = req.body;
 
+    // First, find the build to check ownership
+    const existingBuild = await buildModel.findById(id);
+    if (!existingBuild) {
+      return res.status(404).json({ success: false, message: 'Build not found' });
+    }
+
+    // Check if the authenticated user owns this build
+    if (!req.user || existingBuild.userId !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only update your own builds' 
+      });
+    }
+
     const updatedBuild = await buildModel.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true
     });
-
-    if (!updatedBuild) {
-      return res.status(404).json({ success: false, message: 'Build not found' });
-    }
 
     res.json({ success: true, message: 'Build updated successfully', build: updatedBuild });
   } catch (error) {
@@ -203,11 +227,21 @@ const removeBuild = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid build ID' });
     }
 
-    const deletedBuild = await buildModel.findByIdAndDelete(id);
-    if (!deletedBuild) {
+    // First, find the build to check ownership
+    const existingBuild = await buildModel.findById(id);
+    if (!existingBuild) {
       return res.status(404).json({ success: false, message: 'Build not found' });
     }
 
+    // Check if the authenticated user owns this build
+    if (!req.user || existingBuild.userId !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only delete your own builds' 
+      });
+    }
+
+    const deletedBuild = await buildModel.findByIdAndDelete(id);
     res.json({ success: true, message: 'Build removed successfully', build: deletedBuild });
   } catch (error) {
     console.error(error);
@@ -219,6 +253,14 @@ const removeBuild = async (req, res) => {
 const getBuildsByUser = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    // Check if the authenticated user is requesting their own builds
+    if (!req.user || req.user._id.toString() !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only access your own builds' 
+      });
+    }
 
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
@@ -282,10 +324,22 @@ const deleteBuild = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid build ID' });
     }
-    const deleted = await buildModel.findByIdAndDelete(id);
-    if (!deleted) {
+    
+    // First, find the build to check ownership
+    const existingBuild = await buildModel.findById(id);
+    if (!existingBuild) {
       return res.status(404).json({ success: false, message: 'Build not found' });
     }
+
+    // Check if the authenticated user owns this build
+    if (!req.user || existingBuild.userId !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only delete your own builds' 
+      });
+    }
+    
+    const deleted = await buildModel.findByIdAndDelete(id);
     res.json({ success: true, message: 'Build deleted successfully' });
   } catch (error) {
     console.error(error);
@@ -300,10 +354,20 @@ const togglePublishBuild = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid build ID' });
     }
+    
     const build = await buildModel.findById(id);
     if (!build) {
       return res.status(404).json({ success: false, message: 'Build not found' });
     }
+
+    // Check if the authenticated user owns this build
+    if (!req.user || build.userId !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only publish/unpublish your own builds' 
+      });
+    }
+    
     build.published = !build.published;
     await build.save();
     res.json({ success: true, published: build.published, message: `Build is now ${build.published ? 'published' : 'unpublished'}` });
