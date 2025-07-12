@@ -1,4 +1,6 @@
 import express from 'express';//Importing express module for creating routes
+import { protect } from "../middleware/authMiddleware.js"
+import { isAdmin, isUser } from "../middleware/roleMiddleware.js";
 import { addBuild, listBuilds, getBuildById, updateBuild, removeBuild, getBuildsByUser, deleteBuild, togglePublishBuild } from '../controller/buildController.js';//Importing the controller functions
 
 const buildRouter = express.Router();//Creating a router object
