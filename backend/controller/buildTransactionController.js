@@ -1,4 +1,5 @@
 // controller/buildTransactionController.js
+import mongoose from 'mongoose';
 import { BuildTransaction } from '../model/BuildTransactionModel.js';
 import buildModel from '../model/buildModel.js';
 import { Transaction } from '../model/TransactionModel.js'; // Import for type differentiation
@@ -225,6 +226,98 @@ export const getBuildTransactions = async (req, res) => {
         res.status(500).json({ message: "Error fetching build transactions", error: error.message });
     }
 };
+
+//Get single order by Id with its component details
+export const getSingleBuildOrder = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    const orders = await BuildTransaction.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(orderId),
+        },
+      },
+      {
+        $unwind: "$components",
+      },
+      {
+        $lookup: {
+          from: "products", // your product collection name
+          localField: "components.componentId",
+          foreignField: "_id",
+          as: "componentDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$componentDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          "components.name": "$componentDetails.name",
+          "components.price": "$componentDetails.price",
+          "components.product_image": {
+            $arrayElemAt: ["$componentDetails.img_urls.url", 0],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          buildName: { $first: "$buildName" },
+          buildStatus: { $first: "$buildStatus" },
+          userId: { $first: "$userId" },
+          userName: { $first: "$userName" },
+          userEmail: { $first: "$userEmail" },
+          userAddress: { $first: "$userAddress" },
+          buildImage: { $first: "$buildImage" },
+          totalCharge: { $first: "$totalCharge" },
+          paymentMethod: { $first: "$paymentMethod" },
+          createdAt: { $first: "$createdAt" },
+          stepTimestamps: { $first: "$stepTimestamps" },
+          components: {
+            $push: {
+              componentId: "$components.componentId",
+              quantity: "$components.quantity",
+              name: "$components.name",
+              price: "$components.price",
+              product_image: "$components.product_image",
+            },
+          },
+        },
+      },
+    ]);
+
+    if (!orders.length) {
+      return res.status(404).json({ message: "Build transaction not found" });
+    }
+
+    res.status(200).json({ success: true, data: orders[0] });
+  } catch (error) {
+    console.error("Error fetching build order:", error);
+    res.status(500).json({
+      message: "Error fetching build transaction",
+      error: error.message,
+    });
+  }
+};
+// export const getSingleBuildOrder =async (req, res) => {
+//     try {
+//             const { BuildTransaction } = await import('../model/BuildTransactionModel.js');
+//             const transaction = await BuildTransaction.findById(req.params.id);
+            
+//             if (!transaction) {
+//                 return res.status(404).json({ message: "Build transaction not found" });
+//             }
+            
+//             res.status(200).json({ success: true, data: transaction });
+//         } catch (error) {
+//             res.status(500).json({ message: "Error fetching build transaction", error: error.message });
+//         }
+// };
 
 // Update Build Transaction Status
 export const updateBuildTransactionStatus = async (req, res) => {

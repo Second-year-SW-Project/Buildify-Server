@@ -1,64 +1,15 @@
 import Review from '../model/ReviewModel.js';
 import {Transaction} from '../model/TransactionModel.js'; 
+import {BuildTransaction} from '../model/BuildTransactionModel.js';
 import Product from "../model/productModel.js";
 import mongoose from "mongoose";
 
-export const createReview = async (req, res) => {
-  try {
-    const { productId, orderId, rating, comment } = req.body;
-    const userId = req.user.id;  
-
-    console.log("Logged in user id:", userId); // Debug log
-
-    // Validate ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-      return res.status(400).json({ message: "Invalid order ID format." });
-    }
-
-    // Fetch order
-    const order = await Transaction.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found." });
-    }
-
-    // Check if order belongs to this user
-    if (!order.user_id || order.user_id.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "You have not purchased this product." });
-    }
-
-    // Check if product is in order items
-    const hasProduct = order.items.some(item => item._id.toString() === productId.toString());
-    if (!hasProduct) {
-      return res.status(403).json({ message: "Product not found in your order." });
-    }
-
-    // Check for existing review (for this product, order, and user)
-    const existingReview = await Review.findOne({ productId, orderId, userId });
-    if (existingReview) {
-      return res.status(400).json({ message: "You have already reviewed this product in this order." });
-    }
-
-    // Save new review
-    const review = new Review({
-      productId,
-      orderId,
-      userId,
-      rating,
-      comment,
-    });
-
-    await review.save();
-    res.status(201).json(review);
-
-  } catch (err) {
-    console.error("Error in creating review:", err);
-    res.status(500).json({ message: "An error occurred while creating the review." });
-  }
-};
 // export const createReview = async (req, res) => {
 //   try {
-//     const { productId, orderId, rating, comment } = req.body;
-//     const userId = req.user.id;
+//     const { productId, orderId, type, rating, comment } = req.body;
+//     const userId = req.user.id;  
+
+//     console.log("Logged in user id:", userId); // Debug log
 
 //     // Validate ObjectId format
 //     if (!mongoose.Types.ObjectId.isValid(orderId)) {
@@ -93,6 +44,7 @@ export const createReview = async (req, res) => {
 //       productId,
 //       orderId,
 //       userId,
+//       type,
 //       rating,
 //       comment,
 //     });
@@ -106,8 +58,94 @@ export const createReview = async (req, res) => {
 //   }
 // };
 
-
 // Get reviews for a product
+export const createReview = async (req, res) => {
+  try {
+    const { productId, orderId, type, rating, comment } = req.body;
+    const userId = req.user.id;
+
+    console.log("Logged in user id:", userId);
+
+    // Validate orderId
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid order ID format." });
+    }
+
+    if (type === "product") {
+      // Validate product review requirements
+      if (!productId) {
+        return res.status(400).json({ message: "productId is required for product reviews." });
+      }
+
+      // Fetch product order
+      const order = await Transaction.findById(orderId);
+      if (!order) return res.status(404).json({ message: "Order not found." });
+
+      if (order.user_id.toString() !== userId.toString()) {
+        return res.status(403).json({ message: "You have not purchased this product." });
+      }
+
+      const hasProduct = order.items.some(item => item._id.toString() === productId);
+      if (!hasProduct) {
+        return res.status(403).json({ message: "Product not found in your order." });
+      }
+
+      // Check existing review
+      const existingReview = await Review.findOne({ productId, orderId, userId });
+      if (existingReview) {
+        return res.status(400).json({ message: "You have already reviewed this product in this order." });
+      }
+
+      // Create review
+      const review = new Review({
+        type,
+        productId,
+        orderId,
+        userId,
+        rating,
+        comment,
+      });
+
+      await review.save();
+      return res.status(201).json(review);
+
+    } else if (type === "pc_build") {
+      // Fetch build order
+      const buildOrder = await BuildTransaction.findById(orderId);
+      if (!buildOrder) return res.status(404).json({ message: "Build order not found." });
+
+      if (buildOrder.userId.toString() !== userId.toString()) {
+        return res.status(403).json({ message: "You have not purchased this build." });
+      }
+
+      // Check existing build review
+      const existingReview = await Review.findOne({ orderId, userId, type: "pc_build" });
+      if (existingReview) {
+        return res.status(400).json({ message: "You have already reviewed this build." });
+      }
+
+      // Create build review (no productId needed)
+      const review = new Review({
+        type,
+        orderId,
+        userId,
+        rating,
+        comment,
+      });
+
+      await review.save();
+      return res.status(201).json(review);
+
+    } else {
+      return res.status(400).json({ message: "Invalid review type provided." });
+    }
+
+  } catch (err) {
+    console.error("Error in creating review:", err);
+    res.status(500).json({ message: "An error occurred while creating the review." });
+  }
+};
+
 export const getProductReviews = async (req, res) => {
     
     console.log('Received request for product ID:', req.params.productId);
@@ -131,37 +169,51 @@ export const getProductReviews = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Fetch transactions for user
+    // Fetch product transactions for user
     const transactions = await Transaction.find({ user_id: userId });
 
     // Build a flat array of purchased items with their order (transaction) id
-    const purchasedItems = transactions.flatMap((tx) =>
+    const purchasedProductItems = transactions.flatMap((tx) =>
       tx.items.map((item) => ({
+        type: "product",
         productId: item._id.toString(),
         orderId: tx._id.toString(),
       }))
     );
+
+    // Fetch build transactions for user
+    const buildTransactions = await BuildTransaction.find({ userId: userId });
+
+    // Build a flat array of purchased PC builds
+    const purchasedBuilds = buildTransactions.map((buildTx) => ({
+      type: "pc_build",
+      orderId: buildTx._id.toString(),
+      buildName: buildTx.buildName,
+      buildImage: buildTx.buildImage,
+      price: buildTx.TotalPrice,
+    }));
 
     // Fetch all reviews by user
     const reviews = await Review.find({ userId: userId });
 
     // Fetch product details for purchased products
     const products = await Product.find({
-      _id: { $in: purchasedItems.map((i) => i.productId) },
+      _id: { $in: purchasedProductItems.map((i) => i.productId) },
     }).select("name price img_urls");
 
-    // Combine: mark reviewed status
-    const result = products.map((product) => {
-      const purchaseInfo = purchasedItems.find(
+    // Combine: product reviews
+    const productResults = products.map((product) => {
+      const purchaseInfo = purchasedProductItems.find(
         (i) => i.productId === product._id.toString()
       );
 
       const review = reviews.find(
-        (r) => r.productId === product._id.toString()
+        (r) => r.productId === product._id.toString() && r.type === "product"
       );
 
       return {
-        orderId: purchaseInfo?.orderId || null, // <- add orderId here
+        type: "product",
+        orderId: purchaseInfo?.orderId || null, 
         productId: product._id,
         name: product.name,
         price: product.price,
@@ -173,6 +225,29 @@ export const getProductReviews = async (req, res) => {
         status: review ? "Reviewed" : "To Review",
       };
     });
+
+     // Combine: build reviews
+    const buildResults = purchasedBuilds.map((build) => {
+      const review = reviews.find(
+        (r) => r.orderId === build.orderId && r.type === "pc_build"
+      );
+
+      return {
+        type: "pc_build",
+        orderId: build.orderId,
+        name: build.buildName || "Custom PC Build",
+        product_image: build.buildImage || null,
+        price: build.price || 0,
+        reviewId: review?._id || null,
+        rating: review?.rating || null,
+        comment: review?.comment || null,
+        createdAt: review?.createdAt || null,
+        status: review ? "Reviewed" : "To Review",
+      };
+    });
+
+    // Merge product and build reviews
+    const result = [...productResults, ...buildResults];
 
     res.status(200).json(result);
   } catch (error) {

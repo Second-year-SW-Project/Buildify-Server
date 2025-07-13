@@ -1,14 +1,20 @@
 import { Schema, Model, model } from 'mongoose';
 
 const ReviewSchema = new Schema({
-    productId: { 
+    type: {
         type: String,
+        enum: [ "product", "pc_build"],
         required: true
     },
+    productId: { 
+        type: String,
+        required: function() {
+             return this.type === "product";
+         }
+    },
     orderId: {
-        type: Schema.Types.ObjectId,
-        required: true,
-        ref: 'Transaction'
+        type: String,
+        required: true
     },
     userId: {
         type: Schema.Types.ObjectId,

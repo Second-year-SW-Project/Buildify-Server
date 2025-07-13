@@ -4,7 +4,8 @@ import {
     createBuildTransaction, 
     getBuildTransactions, 
     updateBuildTransactionStatus,
-    checkoutBuildTransaction
+    checkoutBuildTransaction,
+    getSingleBuildOrder
 } from '../controller/buildTransactionController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -20,21 +21,7 @@ buildTransactionRouter.post('/checkout', checkoutBuildTransaction);
 buildTransactionRouter.get('/', protect, getBuildTransactions);
 
 // Get a specific build transaction by ID
-buildTransactionRouter.get('/:id', protect, async (req, res) => {
-    try {
-        const { BuildTransaction } = await import('../model/BuildTransactionModel.js');
-        const transaction = await BuildTransaction.findById(req.params.id)
-            .populate('buildId');
-        
-        if (!transaction) {
-            return res.status(404).json({ message: "Build transaction not found" });
-        }
-        
-        res.status(200).json({ success: true, data: transaction });
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching build transaction", error: error.message });
-    }
-});
+buildTransactionRouter.get('/:id', protect, getSingleBuildOrder);
 
 // Update build transaction status
 buildTransactionRouter.patch('/:id/status', protect, updateBuildTransactionStatus);
