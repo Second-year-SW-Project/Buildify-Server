@@ -3,8 +3,8 @@ import mongoose from "mongoose";
 
 const buildTransactionSchema = new mongoose.Schema({
   buildName: { type: String, default: "" },
-  buildType: { 
-    type: String, 
+  buildType: {
+    type: String,
     enum: ['custom', 'pre-configured', 'gaming-optimized'],
     default: 'custom'
   },
@@ -15,7 +15,7 @@ const buildTransactionSchema = new mongoose.Schema({
   warrantyPeriod: { type: Number, default: 24 }, // months
   orderId: { type: String, default: "" },
   buildImage: { type: String, default: "" },
-  buildStatus: { type: String, default: "pending" },
+  buildStatus: { type: String, default: "Pending" },
   published: { type: Boolean, default: false },
   components: [{
     componentId: { type: mongoose.Schema.Types.ObjectId, default: null },
