@@ -385,10 +385,11 @@ export const deleteReview = async (req, res) => {
 
 export const getAllReviewsAdmin = async (req, res) => {
   try {
-    const { productId, rating, userId } = req.query;
+    const { productId, rating, userId , type , orderId } = req.query;
     const filter = {};
 
     if (productId) filter.productId = productId;
+    if (orderId) filter.orderId = orderId;
     if (rating) filter.rating = rating;
     if (userId) filter.userId = userId;
 
@@ -405,7 +406,7 @@ export const getAllReviewsAdmin = async (req, res) => {
         if (!order) return { ...review.toObject(), productName: null, productCategory: null };
 
         const matchedItem = order.items.find(
-          item => item._id.toString() === review.productId.toString()
+          item => item._id.toString() === review.orderId.toString()
         );
 
         return {
