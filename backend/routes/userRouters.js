@@ -4,7 +4,7 @@ import {
   generate2FASecret,
   enable2FA,
   disable2FA,
-  updatestatus
+  updatestatus, deleteUser
 } from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
@@ -21,6 +21,7 @@ router.post('/logout', logout);
 router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
 router.post('/update-profile', isAuthenticated, updateProfile);
+router.delete('/delete-account', isAuthenticated, deleteUser);
 
 router.post('/change-password', authenticateForPassword, changePassword);
 
