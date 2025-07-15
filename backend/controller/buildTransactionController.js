@@ -145,7 +145,7 @@ export const createBuildTransaction = async (req, res) => {
                             );
                             return caseComponent?.image || caseComponent?.imgUrls?.[0]?.url || "";
                         })(),
-            buildStatus: "pending",
+            buildStatus: "Pending",
             published: false,
             components: selectedComponents.map(component => ({
                 componentId: component._id || component.componentId,
@@ -513,7 +513,7 @@ export const checkoutBuildTransaction = async (req, res) => {
                             );
                             return caseComponent?.image || caseComponent?.imgUrls?.[0]?.url || "";
                         })(),
-            buildStatus: "pending",
+            buildStatus: "Pending",
             published: false,
             components: buildData.selectedComponents.map(component => ({
                 componentId: component._id || component.componentId,

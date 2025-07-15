@@ -15,7 +15,7 @@ const buildTransactionSchema = new mongoose.Schema({
   warrantyPeriod: { type: Number, default: 24 }, // months
   orderId: { type: String, default: "" },
   buildImage: { type: String, default: "" },
-  buildStatus: { type: String, default: "pending" },
+  buildStatus: { type: String, default: "Pending" },
   published: { type: Boolean, default: false },
   components: [{
     componentId: { type: mongoose.Schema.Types.ObjectId, default: null },
@@ -30,11 +30,7 @@ const buildTransactionSchema = new mongoose.Schema({
   deliveryCharge: { type: Number, default: 0 },
   totalCharge: { type: Number, default: 0 },
   stepTimestamps: {
-    Pending: { type: Date },
-    Successful: { type: Date },
-    Shipped: { type: Date },
-    Delivered: { type: Date },
-    Refunded: { type: Date },
+    Pending: { type: Date }
   }
 }, { timestamps: true });
 
