@@ -9,6 +9,16 @@ function generatePickupCode() {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
+// Helper function to calculate service charge based on number of components
+function calculateServiceCharge(componentsCount) {
+    if (componentsCount <= 8) {
+        return 1000; // Rs. 1000 for 8 or fewer parts
+    } else {
+        const additionalParts = componentsCount - 8;
+        return 1000 + (additionalParts * 100); // Rs. 100 for each additional part
+    }
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Create Build Transaction with comprehensive data from continue purchase page
@@ -79,7 +89,7 @@ export const createBuildTransaction = async (req, res) => {
         
         // Calculate comprehensive pricing
         const componentsPrice = pricingBreakdown.componentsPrice || pricingBreakdown.componentCost;
-        const serviceCharge = pricingBreakdown.serviceCharge || 0;
+        const serviceCharge = pricingBreakdown.serviceCharge || calculateServiceCharge(selectedComponents.length);
         const deliveryCharge = deliveryMethod === 'Home Delivery' ? (pricingBreakdown.deliveryCharge || 0) : 0;
         const assemblyCharge = buildOptions.assemblyRequired ? (pricingBreakdown.assemblyCharge || 150) : 0;
         const qualityTestingCharge = buildOptions.qualityTesting ? (pricingBreakdown.qualityTestingCharge || 50) : 0;
@@ -141,7 +151,7 @@ export const createBuildTransaction = async (req, res) => {
                 componentId: component._id || component.componentId,
                 quantity: component.quantity || 1
             })),
-            TotalPrice: total,
+            TotalPrice: componentsPrice,
             province: addressInfo?.province || customerInfo.province,
             district: addressInfo?.district || customerInfo.district,
             paymentMethod: 'stripe',
@@ -467,10 +477,14 @@ export const checkoutBuildTransaction = async (req, res) => {
             }
         }));
 
+        // Calculate components price from selected components
+        const componentsPrice = buildData.selectedComponents.reduce((total, component) => {
+            return total + (component.price * (component.quantity || 1));
+        }, 0);
+        
         // Extract pricing breakdown - use defaults if not provided
         const pricingBreakdown = buildData.pricingBreakdown || {};
-        const componentsPrice = pricingBreakdown.componentsPrice || (total - (pricingBreakdown.serviceCharge || 0) - (pricingBreakdown.deliveryCharge || 0));
-        const serviceCharge = pricingBreakdown.serviceCharge || 0;
+        const serviceCharge = pricingBreakdown.serviceCharge || calculateServiceCharge(buildData.selectedComponents.length);
         const deliveryCharge = buildData.deliveryMethod === 'Home Delivery' ? (pricingBreakdown.deliveryCharge || 0) : 0;
 
         // Generate pickup code if store pickup is selected
@@ -505,7 +519,7 @@ export const checkoutBuildTransaction = async (req, res) => {
                 componentId: component._id || component.componentId,
                 quantity: component.quantity || 1
             })),
-            TotalPrice: total,
+            TotalPrice: componentsPrice,
             province: buildData.deliveryInfo?.province || '',
             district: buildData.deliveryInfo?.district || '',
             paymentMethod: 'stripe',
@@ -550,5 +564,38 @@ export const checkoutBuildTransaction = async (req, res) => {
         }
 
         return res.status(500).json({ message: "Build Transaction Failed", error: error.message });
+    }
+};
+
+// API endpoint to calculate service charge based on component count
+export const calculateServiceChargeAPI = async (req, res) => {
+    try {
+        const { componentCount } = req.query;
+        
+        if (!componentCount || isNaN(componentCount)) {
+            return res.status(400).json({ 
+                message: "Component count is required and must be a number" 
+            });
+        }
+        
+        const count = parseInt(componentCount);
+        const serviceCharge = calculateServiceCharge(count);
+        
+        res.status(200).json({
+            componentCount: count,
+            serviceCharge: serviceCharge,
+            breakdown: {
+                baseCharge: 1000,
+                additionalParts: Math.max(0, count - 8),
+                additionalCharges: Math.max(0, count - 8) * 100
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error calculating service charge:', error);
+        res.status(500).json({ 
+            message: "Error calculating service charge", 
+            error: error.message 
+        });
     }
 };
