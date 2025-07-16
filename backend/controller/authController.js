@@ -527,3 +527,13 @@ export const updatestatus = async (req, res) => {
   }
 };
 
+export const deleteUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    await User.findByIdAndDelete(userId);
+    res.status(200).json({ message: 'Your account has been permanently deleted.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete account', error: err.message });
+  }
+};
+

@@ -8,6 +8,18 @@ import {
   updateProduct,
   getProductCountsByMainCategory,
   getManufacturersByCategory,
+  getPrebuildRamSizes,
+  getLaptopGraphicCards,
+  getMotherboardChipsets,
+  getPowerWattages,
+  getPowerEfficiencyRatings,
+  getStorageCapacities,
+  getStorageTypes,
+  getMaxGpuLengths,
+  getMonitorDisplaySizes,
+  getMonitorPanelTypes,
+  getMonitorRefreshRates,
+  getExpansionComponentTypes,
 } from '../controller/productController.js';
 import { camelToSnakeMiddleware } from '../middleware/camelToSnakeMiddleware.js';
 import upload from '../middleware/multer.js';
@@ -51,6 +63,20 @@ prouter.get('/all', getProducts);
 
 // Get products by main category
 prouter.get('/manufacturers', getManufacturersByCategory);
+prouter.get('/prebuild-ram-sizes', getPrebuildRamSizes);
+prouter.get('/laptop-graphic-cards', getLaptopGraphicCards);
+prouter.get('/motherboard-chipsets', getMotherboardChipsets);
+prouter.get('/power-wattages', getPowerWattages);
+prouter.get('/power-efficiency-ratings', getPowerEfficiencyRatings);
+prouter.get('/storage-capacities', getStorageCapacities);
+prouter.get('/storage-types', getStorageTypes);
+prouter.get('/max-gpu-lengths', getMaxGpuLengths);
+prouter.get('/monitor-display-sizes', getMonitorDisplaySizes);
+prouter.get('/monitor-panel-types', getMonitorPanelTypes);
+prouter.get('/monitor-refresh-rates', getMonitorRefreshRates);
+prouter.get('/expansion-component-types', getExpansionComponentTypes);
+
+
 
 //Get products by attribute
 prouter.get('/filter', getProductsByAttribute);

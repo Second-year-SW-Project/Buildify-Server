@@ -1,4 +1,5 @@
 // controller/buildTransactionController.js
+import mongoose from 'mongoose';
 import { BuildTransaction } from '../model/BuildTransactionModel.js';
 import buildModel from '../model/buildModel.js';
 import { Transaction } from '../model/TransactionModel.js'; // Import for type differentiation
@@ -7,6 +8,16 @@ import mongoose from 'mongoose';
 // Helper function to generate pickup code
 function generatePickupCode() {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
+
+// Helper function to calculate service charge based on number of components
+function calculateServiceCharge(componentsCount) {
+    if (componentsCount <= 8) {
+        return 1000; // Rs. 1000 for 8 or fewer parts
+    } else {
+        const additionalParts = componentsCount - 8;
+        return 1000 + (additionalParts * 100); // Rs. 100 for each additional part
+    }
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -79,7 +90,7 @@ export const createBuildTransaction = async (req, res) => {
 
         // Calculate comprehensive pricing
         const componentsPrice = pricingBreakdown.componentsPrice || pricingBreakdown.componentCost;
-        const serviceCharge = pricingBreakdown.serviceCharge || 0;
+        const serviceCharge = pricingBreakdown.serviceCharge || calculateServiceCharge(selectedComponents.length);
         const deliveryCharge = deliveryMethod === 'Home Delivery' ? (pricingBreakdown.deliveryCharge || 0) : 0;
         const assemblyCharge = buildOptions.assemblyRequired ? (pricingBreakdown.assemblyCharge || 150) : 0;
         const qualityTestingCharge = buildOptions.qualityTesting ? (pricingBreakdown.qualityTestingCharge || 50) : 0;
@@ -136,12 +147,21 @@ export const createBuildTransaction = async (req, res) => {
                     return caseComponent?.image || caseComponent?.imgUrls?.[0]?.url || "";
                 })(),
             buildStatus: "pending",
+            buildImage: buildData.image || buildData.buildImage || build.image ||
+                (() => {
+                    // Try to get image from case component
+                    const caseComponent = selectedComponents?.find(comp =>
+                        comp.type === 'casing' || comp.type === 'Case' || comp.type?.toLowerCase() === 'case'
+                    );
+                    return caseComponent?.image || caseComponent?.imgUrls?.[0]?.url || "";
+                })(),
+            buildStatus: "Pending",
             published: false,
             components: selectedComponents.map(component => ({
                 componentId: component._id || component.componentId,
                 quantity: component.quantity || 1
             })),
-            TotalPrice: total,
+            TotalPrice: componentsPrice,
             province: addressInfo?.province || customerInfo.province,
             district: addressInfo?.district || customerInfo.district,
             paymentMethod: 'stripe',
@@ -407,7 +427,85 @@ export const getBuildTransactions = async (req, res) => {
         res.status(500).json({ Success: false, message: `Server Error: ${error.message}` });
     }
 };
-// Update Build Transaction Status
+
+//Get single order by Id with its component details
+export const getSingleBuildOrder = async (req, res) => {
+    try {
+        const orderId = req.params.id;
+
+        const orders = await BuildTransaction.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(orderId),
+                },
+            },
+            {
+                $unwind: "$components",
+            },
+            {
+                $lookup: {
+                    from: "products", // your product collection name
+                    localField: "components.componentId",
+                    foreignField: "_id",
+                    as: "componentDetails",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$componentDetails",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $addFields: {
+                    "components.name": "$componentDetails.name",
+                    "components.price": "$componentDetails.price",
+                    "components.product_image": {
+                        $arrayElemAt: ["$componentDetails.img_urls.url", 0],
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: "$_id",
+                    buildName: { $first: "$buildName" },
+                    buildStatus: { $first: "$buildStatus" },
+                    userId: { $first: "$userId" },
+                    userName: { $first: "$userName" },
+                    userEmail: { $first: "$userEmail" },
+                    userAddress: { $first: "$userAddress" },
+                    buildImage: { $first: "$buildImage" },
+                    totalCharge: { $first: "$totalCharge" },
+                    paymentMethod: { $first: "$paymentMethod" },
+                    createdAt: { $first: "$createdAt" },
+                    stepTimestamps: { $first: "$stepTimestamps" },
+                    components: {
+                        $push: {
+                            componentId: "$components.componentId",
+                            quantity: "$components.quantity",
+                            name: "$components.name",
+                            price: "$components.price",
+                            product_image: "$components.product_image",
+                        },
+                    },
+                },
+            },
+        ]);
+
+        if (!orders.length) {
+            return res.status(404).json({ message: "Build transaction not found" });
+        }
+
+        res.status(200).json({ success: true, data: orders[0] });
+    } catch (error) {
+        console.error("Error fetching build order:", error);
+        res.status(500).json({
+            message: "Error fetching build transaction",
+            error: error.message,
+        });
+    }
+};
+
 export const updateBuildTransactionStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -555,10 +653,14 @@ export const checkoutBuildTransaction = async (req, res) => {
             }
         }));
 
+        // Calculate components price from selected components
+        const componentsPrice = buildData.selectedComponents.reduce((total, component) => {
+            return total + (component.price * (component.quantity || 1));
+        }, 0);
+
         // Extract pricing breakdown - use defaults if not provided
         const pricingBreakdown = buildData.pricingBreakdown || {};
-        const componentsPrice = pricingBreakdown.componentsPrice || (total - (pricingBreakdown.serviceCharge || 0) - (pricingBreakdown.deliveryCharge || 0));
-        const serviceCharge = pricingBreakdown.serviceCharge || 0;
+        const serviceCharge = pricingBreakdown.serviceCharge || calculateServiceCharge(buildData.selectedComponents.length);
         const deliveryCharge = buildData.deliveryMethod === 'Home Delivery' ? (pricingBreakdown.deliveryCharge || 0) : 0;
 
         // Generate pickup code if store pickup is selected
@@ -588,12 +690,22 @@ export const checkoutBuildTransaction = async (req, res) => {
                     return caseComponent?.image || caseComponent?.imgUrls?.[0]?.url || "";
                 })(),
             buildStatus: "pending",
+            buildImage: buildData.image || buildData.buildImage || buildImage ||
+                customBuildItem.image ||
+                (() => {
+                    // Try to get image from case component
+                    const caseComponent = buildData.selectedComponents?.find(comp =>
+                        comp.type === 'casing' || comp.type === 'Case' || comp.type?.toLowerCase() === 'case'
+                    );
+                    return caseComponent?.image || caseComponent?.imgUrls?.[0]?.url || "";
+                })(),
+            buildStatus: "Pending",
             published: false,
             components: buildData.selectedComponents.map(component => ({
                 componentId: component._id || component.componentId,
                 quantity: component.quantity || 1
             })),
-            TotalPrice: total,
+            TotalPrice: componentsPrice,
             province: buildData.deliveryInfo?.province || '',
             district: buildData.deliveryInfo?.district || '',
             paymentMethod: 'stripe',
@@ -638,6 +750,39 @@ export const checkoutBuildTransaction = async (req, res) => {
         }
 
         return res.status(500).json({ message: "Build Transaction Failed", error: error.message });
+    }
+};
+
+// API endpoint to calculate service charge based on component count
+export const calculateServiceChargeAPI = async (req, res) => {
+    try {
+        const { componentCount } = req.query;
+
+        if (!componentCount || isNaN(componentCount)) {
+            return res.status(400).json({
+                message: "Component count is required and must be a number"
+            });
+        }
+
+        const count = parseInt(componentCount);
+        const serviceCharge = calculateServiceCharge(count);
+
+        res.status(200).json({
+            componentCount: count,
+            serviceCharge: serviceCharge,
+            breakdown: {
+                baseCharge: 1000,
+                additionalParts: Math.max(0, count - 8),
+                additionalCharges: Math.max(0, count - 8) * 100
+            }
+        });
+
+    } catch (error) {
+        console.error('Error calculating service charge:', error);
+        res.status(500).json({
+            message: "Error calculating service charge",
+            error: error.message
+        });
     }
 };
 
@@ -800,15 +945,6 @@ export const getSingleBuildTransaction = async (req, res) => {
         }
 
         const build = builds[0];
-
-        console.log('Single build transaction fetched:', {
-            id: build._id,
-            buildName: build.buildName,
-            userName: build.userName,
-            TotalPrice: build.TotalPrice,
-            buildStatus: build.buildStatus,
-            components: build.components?.length || 0
-        });
 
         res.status(200).json({
             success: true,

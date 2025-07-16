@@ -5,6 +5,8 @@ import {
     getBuildTransactions,
     updateBuildTransactionStatus,
     checkoutBuildTransaction,
+    getSingleBuildOrder,
+    calculateServiceChargeAPI,
     deleteBuildTransaction,
     getSingleBuildTransaction
 } from '../controller/buildTransactionController.js';
@@ -22,8 +24,13 @@ buildTransactionRouter.post('/checkout', checkoutBuildTransaction);
 // Get build transactions with filtering
 buildTransactionRouter.get('/', protect, getBuildTransactions);
 
+// Calculate service charge based on component count (must be before /:id route)
+buildTransactionRouter.get('/calculate-service-charge', calculateServiceChargeAPI);
+
 // Get a specific build transaction by ID
-buildTransactionRouter.get('/:id', protect, validateObjectId, getSingleBuildTransaction);
+buildTransactionRouter.get('/:id', protect, getSingleBuildOrder);
+
+buildTransactionRouter.get('/builds/:id', protect, validateObjectId, getSingleBuildTransaction);
 
 // Delete build transaction by ID
 buildTransactionRouter.delete('/:id', protect, validateObjectId, deleteBuildTransaction);

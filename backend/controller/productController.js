@@ -841,6 +841,12 @@ export const getProductCountsByMainCategory = async (req, res) => {
 
 
 
+
+
+
+
+
+
 export const getManufacturersByCategory = async (req, res) => {
     try {
         const { category } = req.query;
@@ -860,6 +866,222 @@ export const getManufacturersByCategory = async (req, res) => {
         res.status(200).json(formattedManufacturers);
     } catch (error) {
         console.error('Error fetching manufacturers by category:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getPrebuildRamSizes = async (req, res) => {
+    try {
+        // Find all prebuild products and get distinct RAM sizes
+        const ramSizes = await Product.find({ type: 'prebuild' }).distinct('ram_size');
+
+        // Format the RAM sizes into the { display, value } structure
+        const formattedRamSizes = ramSizes.map(size => ({
+            display: `${size} GB`,
+            value: size,
+        }));
+
+        res.status(200).json(formattedRamSizes);
+    } catch (error) {
+        console.error('Error fetching prebuild RAM sizes:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getLaptopGraphicCards = async (req, res) => {
+    try {
+        // Find all laptop products and get distinct graphic cards
+        const graphicCards = await Product.find({ type: 'laptop' }).distinct('graphic_card');
+
+        // Format the graphic cards into the { display, value } structure
+        const formattedGraphicCards = graphicCards.map(card => ({
+            display: card,
+            value: card,
+        }));
+
+        res.status(200).json(formattedGraphicCards);
+    } catch (error) {
+        console.error('Error fetching laptop graphic cards:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getMotherboardChipsets = async (req, res) => {
+    try {
+        // Find all motherboard products and get distinct chipsets
+        const chipsets = await Product.find({ type: 'motherboard' }).distinct('motherboard_chipset');
+
+        // Format the chipsets into the { display, value } structure
+        const formattedChipsets = chipsets.map(chipset => ({
+            display: chipset,
+            value: chipset,
+        }));
+
+        res.status(200).json(formattedChipsets);
+    } catch (error) {
+        console.error('Error fetching motherboard chipsets:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getPowerWattages = async (req, res) => {
+    try {
+        // Find all power supply products and get distinct wattages
+        const wattages = await Product.find({ type: 'power' }).distinct('wattage');
+
+        // Format the wattages into the { display, value } structure
+        const formattedWattages = wattages.map(wattage => ({
+            display: `${wattage}W`,
+            value: wattage,
+        }));
+
+        res.status(200).json(formattedWattages);
+    } catch (error) {
+        console.error('Error fetching power wattages:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getPowerEfficiencyRatings = async (req, res) => {
+    try {
+        // Find all power supply products and get distinct efficiency ratings
+        const efficiencyRatings = await Product.find({ type: 'power' }).distinct('efficiency_rating');
+
+        // Format the efficiency ratings into the { display, value } structure
+        const formattedEfficiencyRatings = efficiencyRatings.map(rating => ({
+            display: rating.replace(/_/g, ' ').replace('plus', '+'),
+            value: rating,
+        }));
+
+        res.status(200).json(formattedEfficiencyRatings);
+    } catch (error) {
+        console.error('Error fetching power efficiency ratings:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getStorageCapacities = async (req, res) => {
+    try {
+        // Find all storage products and get distinct storage capacities
+        const storageCapacities = await Product.find({ type: 'storage' }).distinct('storage_capacity');
+
+        // Format the storage capacities into the { display, value } structure
+        const formattedStorageCapacities = storageCapacities.map(capacity => ({
+            display: `${capacity} GB`,
+            value: capacity,
+        }));
+
+        res.status(200).json(formattedStorageCapacities);
+    } catch (error) {
+        console.error('Error fetching storage capacities:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getStorageTypes = async (req, res) => {
+    try {
+        // Find all storage products and get distinct storage types
+        const storageTypes = await Product.find({ type: 'storage' }).distinct('storage_type');
+
+        // Format the storage types into the { display, value } structure
+        const formattedStorageTypes = storageTypes.map(type => ({
+            display: type.toUpperCase(),
+            value: type,
+        }));
+
+        res.status(200).json(formattedStorageTypes);
+    } catch (error) {
+        console.error('Error fetching storage types:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getMaxGpuLengths = async (req, res) => {
+    try {
+        // Find all casing products and get distinct max GPU lengths
+        const maxGpuLengths = await Product.find({ type: 'casing' }).distinct('max_gpu_length');
+
+        // Format the max GPU lengths into the { display, value } structure
+        const formattedMaxGpuLengths = maxGpuLengths.map(length => ({
+            display: `${length} mm`,
+            value: length,
+        }));
+
+        res.status(200).json(formattedMaxGpuLengths);
+    } catch (error) {
+        console.error('Error fetching max GPU lengths:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getMonitorDisplaySizes = async (req, res) => {
+    try {
+        // Find all monitor products and get distinct display sizes
+        const displaySizes = await Product.find({ type: 'monitor' }).distinct('display_size');
+
+        // Format the display sizes into the { display, value } structure
+        const formattedDisplaySizes = displaySizes.map(size => ({
+            display: `${size}"`,
+            value: size,
+        }));
+
+        res.status(200).json(formattedDisplaySizes);
+    } catch (error) {
+        console.error('Error fetching monitor display sizes:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getMonitorPanelTypes = async (req, res) => {
+    try {
+        // Find all monitor products and get distinct panel types
+        const panelTypes = await Product.find({ type: 'monitor' }).distinct('panel_type');
+
+        // Format the panel types into the { display, value } structure
+        const formattedPanelTypes = panelTypes.map(type => ({
+            display: type.toUpperCase(),
+            value: type,
+        }));
+
+        res.status(200).json(formattedPanelTypes);
+    } catch (error) {
+        console.error('Error fetching monitor panel types:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getMonitorRefreshRates = async (req, res) => {
+    try {
+        // Find all monitor products and get distinct refresh rates
+        const refreshRates = await Product.find({ type: 'monitor' }).distinct('refresh_rate');
+
+        // Format the refresh rates into the { display, value } structure
+        const formattedRefreshRates = refreshRates.map(rate => ({
+            display: `${rate} Hz`,
+            value: rate,
+        }));
+
+        res.status(200).json(formattedRefreshRates);
+    } catch (error) {
+        console.error('Error fetching monitor refresh rates:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getExpansionComponentTypes = async (req, res) => {
+    try {
+        // Find all expansion_network products and get distinct component types
+        const componentTypes = await Product.find({ type: 'expansion_network' }).distinct('component_type');
+
+        // Format the component types into the { display, value } structure
+        const formattedComponentTypes = componentTypes.map(type => ({
+            display: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+            value: type,
+        }));
+
+        res.status(200).json(formattedComponentTypes);
+    } catch (error) {
+        console.error('Error fetching expansion component types:', error);
         res.status(500).json({ error: error.message });
     }
 };
