@@ -4,7 +4,6 @@ import { BuildTransaction } from '../model/BuildTransactionModel.js';
 import buildModel from '../model/buildModel.js';
 import { Transaction } from '../model/TransactionModel.js'; // Import for type differentiation
 import Stripe from 'stripe';
-import mongoose from 'mongoose';
 // Helper function to generate pickup code
 function generatePickupCode() {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
