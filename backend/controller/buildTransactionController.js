@@ -647,12 +647,6 @@ export const deleteBuildTransaction = async (req, res) => {
         // Extract build transaction ID from request parameters
         const { id } = req.params;
 
-        // Check if the ID is a valid MongoDB ObjectId
-        // Check if the ID is a valid 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ Success: false, message: 'Invalid build transaction ID format' });
-        }
-
         // Find and delete the build transaction by ID
         const existingBuildTransaction = await BuildTransaction.findByIdAndDelete(id);
 
@@ -665,7 +659,7 @@ export const deleteBuildTransaction = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: `Build transaction #${existingBuildTransaction._id.toString().slice(-4).toUpperCase()} deleted successfully`,
+            message: `Build order deleted successfully`,
         });
 
     } catch (error) {
@@ -682,26 +676,143 @@ export const getSingleBuildTransaction = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Check if the ID is a valid MongoDB ObjectId
-        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid build transaction ID format'
-            });
-        }
+        // Use aggregation pipeline to get build with product and user details (same as getBuildTransactions but for single build)
+        const builds = await BuildTransaction.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(id) } },
+            { $unwind: { path: "$components", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "products",
+                    let: {
+                        componentId: {
+                            $cond: {
+                                if: { $type: "$components.componentId" },
+                                then: { $toObjectId: "$components.componentId" },
+                                else: "$components.componentId"
+                            }
+                        }
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$_id", "$$componentId"] },
+                            },
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                price: 1,
+                                type: 1,
+                                manufacturer: 1,
+                                img_urls: 1,
+                            },
+                        },
+                    ],
+                    as: "productDetails",
+                },
+            },
+            { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    let: {
+                        userId: {
+                            $cond: {
+                                if: { $type: "$userId" },
+                                then: { $toObjectId: "$userId" },
+                                else: "$userId"
+                            }
+                        }
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$_id", "$$userId"] },
+                            },
+                        },
+                        {
+                            $project: {
+                                name: 1,
+                                email: 1,
+                                profilePicture: 1,
+                            },
+                        },
+                    ],
+                    as: "userDetails",
+                },
+            },
+            { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+            {
+                $group: {
+                    _id: "$_id",
+                    components: {
+                        $push: {
+                            $cond: {
+                                if: { $ne: ["$components.componentId", null] },
+                                then: {
+                                    _id: "$components.componentId",
+                                    quantity: "$components.quantity",
+                                    name: "$productDetails.name",
+                                    type: "$productDetails.type",
+                                    manufacturer: "$productDetails.manufacturer",
+                                    price: "$productDetails.price",
+                                    product_image: {
+                                        $arrayElemAt: ["$productDetails.img_urls.url", 0],
+                                    },
+                                },
+                                else: "$$REMOVE"
+                            }
+                        }
+                    },
+                    buildName: { $first: "$buildName" },
+                    buildType: { $first: "$buildType" },
+                    TotalPrice: { $first: "$TotalPrice" },
+                    totalCharge: { $first: "$totalCharge" },
+                    buildStatus: { $first: "$buildStatus" },
+                    deliveryMethod: { $first: "$deliveryMethod" },
+                    userId: { $first: "$userId" },
+                    userName: { $first: "$userDetails.name" },
+                    userEmail: { $first: "$userDetails.email" },
+                    userAddress: { $first: "$userAddress" },
+                    province: { $first: "$province" },
+                    district: { $first: "$district" },
+                    paymentMethod: { $first: "$paymentMethod" },
+                    serviceCharge: { $first: "$serviceCharge" },
+                    deliveryCharge: { $first: "$deliveryCharge" },
+                    createdAt: { $first: "$createdAt" },
+                    updatedAt: { $first: "$updatedAt" },
+                    stepTimestamps: { $first: "$stepTimestamps" },
+                    profilePicture: { $first: "$userDetails.profilePicture" },
+                    userDetails: { $first: "$userDetails" },
+                    warrantyPeriod: { $first: "$warrantyPeriod" },
+                    orderId: { $first: "$orderId" },
+                    buildImage: { $first: "$buildImage" },
+                    published: { $first: "$published" },
+                },
+            },
+        ]);
 
-        const buildTransaction = await BuildTransaction.findById(id);
-
-        if (!buildTransaction) {
+        if (!builds || builds.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Build transaction not found'
             });
         }
 
+        const build = builds[0];
+
+        console.log('Single build transaction fetched:', {
+            id: build._id,
+            buildName: build.buildName,
+            userName: build.userName,
+            TotalPrice: build.TotalPrice,
+            buildStatus: build.buildStatus,
+            components: build.components?.length || 0
+        });
+
         res.status(200).json({
             success: true,
-            data: buildTransaction
+            data: build
         });
 
     } catch (error) {

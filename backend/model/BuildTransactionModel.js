@@ -31,10 +31,12 @@ const buildTransactionSchema = new mongoose.Schema({
   totalCharge: { type: Number, default: 0 },
   stepTimestamps: {
     Pending: { type: Date },
-    Successful: { type: Date },
+    Confirmed: { type: Date },
+    Building: { type: Date },
+    Completed: { type: Date },
     Shipped: { type: Date },
     Delivered: { type: Date },
-    Refunded: { type: Date },
+    Canceled: { type: Date },
   }
 }, { timestamps: true });
 

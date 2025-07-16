@@ -9,6 +9,7 @@ import {
     getSingleBuildTransaction
 } from '../controller/buildTransactionController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { validateObjectId } from '../middleware/validateObjectId.js';
 
 const buildTransactionRouter = express.Router();
 
@@ -22,13 +23,13 @@ buildTransactionRouter.post('/checkout', checkoutBuildTransaction);
 buildTransactionRouter.get('/', protect, getBuildTransactions);
 
 // Get a specific build transaction by ID
-buildTransactionRouter.get('/:id', protect, getSingleBuildTransaction);
+buildTransactionRouter.get('/:id', protect, validateObjectId, getSingleBuildTransaction);
 
 // Delete build transaction by ID
-buildTransactionRouter.delete('/:id', protect, deleteBuildTransaction);
+buildTransactionRouter.delete('/:id', protect, validateObjectId, deleteBuildTransaction);
 
 // Update build transaction status
-buildTransactionRouter.patch('/:id/status', protect, updateBuildTransactionStatus);
+buildTransactionRouter.patch('/:id/status', protect, validateObjectId, updateBuildTransactionStatus);
 
 // Test endpoint to validate data structure for continue purchase page
 buildTransactionRouter.post('/validate-data', (req, res) => {
