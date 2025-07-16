@@ -47,8 +47,9 @@ prouter.put('/:id',
 );
 
 //Get all products with queries
-prouter.get('/all', protect, isAdmin, getProducts);
+prouter.get('/all', getProducts);
 
+// Get products by main category
 prouter.get('/manufacturers', getManufacturersByCategory);
 
 //Get products by attribute
