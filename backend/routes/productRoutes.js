@@ -20,6 +20,7 @@ import {
   getMonitorPanelTypes,
   getMonitorRefreshRates,
   getExpansionComponentTypes,
+  getTopProducts,
 } from '../controller/productController.js';
 import { camelToSnakeMiddleware } from '../middleware/camelToSnakeMiddleware.js';
 import upload from '../middleware/multer.js';
@@ -80,6 +81,9 @@ prouter.get('/expansion-component-types', getExpansionComponentTypes);
 
 //Get products by attribute
 prouter.get('/filter', getProductsByAttribute);
+
+// Get top products with highest ratings (>3) and sales
+prouter.get('/top-products', protect, isAdmin, getTopProducts);
 
 //Get products by id
 prouter.get('/:id', validateObjectId, getProductById);
