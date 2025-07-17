@@ -42,25 +42,65 @@ export const getUserRMAs = async (req, res) => {
   };
 
 // Admin: Get filtered RMA requests
-export const getAdminRequests = async (req, res) => {
-    try {
-      const { orderId, status } = req.query;
-      const query = {};
+// export const getAdminRequests = async (req, res) => {
+//     try {
+//       const { orderId, status } = req.query;
+//       const query = {};
       
-      if (orderId) query.orderId = orderId;
-      if (status) query.status = status;
+//       if (orderId) query.orderId = orderId;
+//       if (status) query.status = status;
   
-      const requests = await RMA
-        .find(query)
-        .populate('userId', 'name email profilePicture')
-        .sort({ createdAt: -1 });
+//       const requests = await RMA
+//         .find(query)
+//         .populate('userId', 'name email profilePicture')
+//         .sort({ createdAt: -1 });
   
-      res.status(200).json(requests);
-    } catch (error) {
-      console.error('Admin RMA Error:', error);
-      res.status(500).json([]);
-    }
-  };
+//       res.status(200).json(requests);
+//     } catch (error) {
+//       console.error('Admin RMA Error:', error);
+//       res.status(500).json([]);
+//     }
+//   };
+
+export const getAdminRequests = async (req, res) => {
+  try {
+    const { orderId, status, name, email } = req.query;
+    const query = {};
+
+    if (orderId) query.orderId = { $regex: orderId, $options: 'i' };
+    if (status) query.status = status;
+
+    // Fetch all matching RMA requests
+    const requests = await RMA
+      .find(query)
+      .populate('userId', 'name email profilePicture')
+      .sort({ createdAt: -1 });
+
+    // Further filter on populated user fields manually
+    const filteredRequests = requests.filter((rma) => {
+      const user = rma.userId;
+
+      if (!user) return false;
+
+      const matchName = name
+        ? user.name?.toLowerCase().includes(name.toLowerCase())
+        : true;
+
+      const matchEmail = email
+        ? user.email?.toLowerCase().includes(email.toLowerCase())
+        : true;
+
+      return matchName && matchEmail;
+    });
+
+    res.status(200).json(filteredRequests);
+
+  } catch (error) {
+    console.error('Admin RMA Error:', error);
+    res.status(500).json([]);
+  }
+};
+
 
 // Admin: Respond to RMA
 export const respondToRMA = async (req, res) => {

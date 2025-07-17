@@ -21,16 +21,56 @@ crouter.post('/complaints/submit', async (req, res) => {
 });
 
 // Get complaints by user (for users to see their complaints)
-crouter.get('/complaints/user/:userId', async (req, res) => {
-  const userId = req.params.userId;
+// crouter.get('/complaints/user/:userId', async (req, res) => {
+//   const userId = req.params.userId;
+
+//   try {
+//     const complaints = await Complaint.find({ user: userId }).populate('user');
+//     res.json(complaints);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// });
+// GET /api/complaints/admin
+crouter.get('/complaints/admin', async (req, res) => {
+  const { name = '', email = '', status = '' } = req.query;
 
   try {
-    const complaints = await Complaint.find({ user: userId }).populate('user');
-    res.json(complaints);
+    const filter = {
+      ...(status && { status }),
+    };
+
+    const userFilter = {};
+
+    if (name) {
+      userFilter['user.name'] = { $regex: name, $options: 'i' };
+    }
+
+    if (email) {
+      userFilter['user.email'] = { $regex: email, $options: 'i' };
+    }
+
+    const complaints = await Complaint.find(filter)
+      .populate({
+        path: 'user',
+        match: {
+          ...(name && { name: { $regex: name, $options: 'i' } }),
+          ...(email && { email: { $regex: email, $options: 'i' } }),
+        },
+      })
+      .exec();
+
+    // Filter out complaints where the user doesn't match the populate filter
+    const filtered = complaints.filter(c => c.user);
+
+    res.json(filtered);
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 
 // Get complaints (for admin to filter and view all complaints)

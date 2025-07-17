@@ -3,6 +3,7 @@ import {Transaction} from '../model/TransactionModel.js';
 import {BuildTransaction} from '../model/BuildTransactionModel.js';
 import Product from "../model/productModel.js";
 import mongoose from "mongoose";
+import User from '../model/userModel.js';
 
 // export const createReview = async (req, res) => {
 //   try {
@@ -383,30 +384,107 @@ export const deleteReview = async (req, res) => {
 
 // Get all reviews (admin)
 
+// export const getAllReviewsAdmin = async (req, res) => {
+//   try {
+//     const { productId, rating, userId , type , orderId } = req.query;
+//     const filter = {};
+
+//     if (productId) filter.productId = productId;
+//     if (orderId) filter.orderId = orderId;
+//     if (rating) filter.rating = rating;
+//     if (userId) filter.userId = userId;
+
+//     // Step 1: Get all reviews with filters
+//     const reviews = await Review.find(filter)
+//       .populate('userId', 'name email profilePicture')
+//       .sort({ createdAt: -1 });
+
+//     // Step 2: For each review, fetch order -> find item -> extract name/category
+//     const enhancedReviews = await Promise.all(
+//       reviews.map(async (review) => {
+//         const order = await Transaction.findById(review.orderId);
+
+//         if (!order) return { ...review.toObject(), productName: null, productCategory: null };
+
+//         const matchedItem = order.items.find(
+//           item => item._id.toString() === review.orderId.toString()
+//         );
+
+//         return {
+//           ...review.toObject(),
+//           productName: matchedItem?.name || null,
+//           productCategory: matchedItem?.category || null,
+//         };
+//       })
+//     );
+
+//     res.status(200).json(enhancedReviews);
+//   } catch (error) {
+//     console.error('Error fetching all reviews for admin:', error);
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 export const getAllReviewsAdmin = async (req, res) => {
   try {
-    const { productId, rating, userId , type , orderId } = req.query;
+    const { productId, rating, userId, type, orderId, search, date } = req.query;
+
     const filter = {};
 
     if (productId) filter.productId = productId;
     if (orderId) filter.orderId = orderId;
-    if (rating) filter.rating = rating;
-    if (userId) filter.userId = userId;
+    if (rating) filter.rating = parseInt(rating);
+    if (type) filter.type = type;
 
-    // Step 1: Get all reviews with filters
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      filter.createdAt = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    }
+
+    if (search) {
+      const users = await User.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+        ],
+      }).select('_id');
+
+      const userIds = users.map(user => user._id);
+
+      if (userIds.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      filter.userId = { $in: userIds };
+    }
+
+    if (userId) {
+      filter.userId = userId;
+    }
+
     const reviews = await Review.find(filter)
       .populate('userId', 'name email profilePicture')
       .sort({ createdAt: -1 });
 
-    // Step 2: For each review, fetch order -> find item -> extract name/category
     const enhancedReviews = await Promise.all(
       reviews.map(async (review) => {
+        if (!review.orderId) {
+          return { ...review.toObject(), productName: null, productCategory: null };
+        }
+
         const order = await Transaction.findById(review.orderId);
 
         if (!order) return { ...review.toObject(), productName: null, productCategory: null };
 
         const matchedItem = order.items.find(
-          item => item._id.toString() === review.orderId.toString()
+          item => item._id && item._id.toString() === review.orderId.toString()
         );
 
         return {
