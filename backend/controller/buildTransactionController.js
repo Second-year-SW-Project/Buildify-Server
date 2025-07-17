@@ -958,3 +958,69 @@ export const getSingleBuildTransaction = async (req, res) => {
         });
     }
 };
+
+// Get top builds for dashboard (delivered builds ordered by highest totalCharge)
+export const getTopBuilds = async (req, res) => {
+    try {
+        const { limit = 5 } = req.query;
+
+        const topBuilds = await BuildTransaction.aggregate([
+            // Match only delivered builds
+            {
+                $match: {
+                    buildStatus: 'Delivered'
+                }
+            },
+            // Lookup user data
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$user',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            // Sort by totalCharge descending (highest first)
+            {
+                $sort: {
+                    totalCharge: -1
+                }
+            },
+            // Limit results
+            {
+                $limit: parseInt(limit)
+            },
+            // Project required fields
+            {
+                $project: {
+                    _id: 1,
+                    buildName: 1,
+                    buildImage: 1,
+                    totalCharge: 1,
+                    deliveredDate: '$stepTimestamps.Delivered',
+                    createdAt: 1,
+                    userName: '$user.name',
+                    userEmail: '$user.email'
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: topBuilds
+        });
+
+    } catch (error) {
+        console.error("Error fetching top builds:", error);
+        return res.status(500).json({
+            success: false,
+            message: `Server Error: ${error.message}`
+        });
+    }
+};

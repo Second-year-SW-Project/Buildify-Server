@@ -8,7 +8,8 @@ import {
     getSingleBuildOrder,
     calculateServiceChargeAPI,
     deleteBuildTransaction,
-    getSingleBuildTransaction
+    getSingleBuildTransaction,
+    getTopBuilds
 } from '../controller/buildTransactionController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { validateObjectId } from '../middleware/validateObjectId.js';
@@ -26,6 +27,9 @@ buildTransactionRouter.get('/', protect, getBuildTransactions);
 
 // Calculate service charge based on component count (must be before /:id route)
 buildTransactionRouter.get('/calculate-service-charge', calculateServiceChargeAPI);
+
+// Get top builds for dashboard (must be before /:id route)
+buildTransactionRouter.get('/top-builds', protect, getTopBuilds);
 
 // Get a specific build transaction by ID
 buildTransactionRouter.get('/:id', protect, getSingleBuildOrder);
