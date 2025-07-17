@@ -189,7 +189,6 @@ export const getOrderList = async (req, res) => {
         // Use aggregation pipeline to get orders with product and user details
         const orders = await Transaction.aggregate([
             { $match: queryObj },
-            { $sort: { updatedAt: -1 } },
             { $skip: skip },
             { $limit: parseInt(limit) },
             { $unwind: "$items" },
@@ -265,6 +264,7 @@ export const getOrderList = async (req, res) => {
                     userDetails: { $first: "$userDetails" }
                 },
             },
+            { $sort: { updatedAt: -1 } },
         ]);
 
         res.status(200).json({

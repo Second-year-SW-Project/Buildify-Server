@@ -59,8 +59,9 @@ prouter.put('/:id',
 );
 
 //Get all products with queries
-prouter.get('/all', protect, isAdmin, getProducts);
+prouter.get('/all', getProducts);
 
+// Get products by main category
 prouter.get('/manufacturers', getManufacturersByCategory);
 prouter.get('/prebuild-ram-sizes', getPrebuildRamSizes);
 prouter.get('/laptop-graphic-cards', getLaptopGraphicCards);

@@ -2,6 +2,7 @@ import express from "express";
 import { protect } from "../middleware/authMiddleware.js"
 import { isAdmin, isUser } from "../middleware/roleMiddleware.js";
 import { checkout, getOrderList, deleteOrder, getProductOrders, getSingleOrder, updateOrderStatus, getOrderSummary, getOrdersSummaryTotals, getBarChartSummary } from "../controller/checkoutController.js";
+import { validateObjectId } from "../middleware/validateObjectId.js";
 
 const checkoutrouter = express.Router();
 
@@ -12,13 +13,13 @@ checkoutrouter.post("/payment", checkout);
 checkoutrouter.get("/payment", protect, isAdmin, getOrderList);
 
 //Delete Order
-checkoutrouter.delete("/order/:id", protect, isAdmin, deleteOrder);
+checkoutrouter.delete("/order/:id", protect, isAdmin, validateObjectId, deleteOrder);
 
 //Get all orders of a user
 checkoutrouter.get("/product-orders", protect, getProductOrders);
 
 //Get single order by id
-checkoutrouter.get("/order/:id", protect, getSingleOrder);
+checkoutrouter.get("/order/:id", protect, validateObjectId, getSingleOrder);
 
 //Get normal order Summary
 checkoutrouter.get("/order-summary", protect, isAdmin, getOrderSummary);
@@ -27,7 +28,7 @@ checkoutrouter.get("/order-summary", protect, isAdmin, getOrderSummary);
 checkoutrouter.get("/order-summary-total", protect, isAdmin, getOrdersSummaryTotals);
 
 //Update order status by id
-checkoutrouter.patch("/product-orders/:id", protect, updateOrderStatus);
+checkoutrouter.patch("/product-orders/:id", protect, validateObjectId, updateOrderStatus);
 
 //Get bar chart summary data for dashboard analytics
 checkoutrouter.get("/bar-chart-summary", protect, isAdmin, getBarChartSummary);
