@@ -13,7 +13,7 @@ export const camelToSnakeMiddleware = (req, res, next) => {
 };
 
 // Utility function to convert keys from camelCase to snake_case
-const toSnakeCase = (obj) => {
+export const toSnakeCase = (obj) => {
     if (!obj || typeof obj !== "object" || Array.isArray(obj)) return obj;
     return Object.fromEntries(
         Object.entries(obj).map(([key, value]) => [

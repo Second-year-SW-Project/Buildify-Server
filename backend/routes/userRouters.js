@@ -1,8 +1,11 @@
 import express from "express";
-import { forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,
+import {
+  forgetPassword, login, logout, resendOtp, resetPassword, signup, updateProfile, verifyAccount, changePassword,
   generate2FASecret,
   enable2FA,
-  disable2FA } from "../controller/authController.js";
+  disable2FA,
+  updatestatus, deleteUser
+} from "../controller/authController.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import User from "../model/userModel.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -17,14 +20,16 @@ router.post('/login', login);
 router.post('/logout', logout);
 router.post('/forget-password', forgetPassword);
 router.post('/reset-password', resetPassword);
-router.post('/update-profile',isAuthenticated, updateProfile);
+router.post('/update-profile', isAuthenticated, updateProfile);
+router.delete('/delete-account', isAuthenticated, deleteUser);
 
 router.post('/change-password', authenticateForPassword, changePassword);
 
 // 2FA routes
-router.post('/2fa/generate',isAuthenticated, generate2FASecret);
+router.post('/2fa/generate', isAuthenticated, generate2FASecret);
 router.post('/2fa/enable', isAuthenticated, enable2FA);
 router.post('/2fa/disable', isAuthenticated, disable2FA);
+router.put('/update-status/:userId', isAuthenticated, updatestatus);
 
 
 
@@ -94,7 +99,7 @@ import bcrypt from "bcryptjs";
 import authenticateJWT from "../middleware/authenticateJWT.js";
 
 // Create a new user
-router.post("/", async (req, res) => {
+router.post("/new", async (req, res) => {
   try {
     const { name, email, password, Role } = req.body;
 
@@ -124,6 +129,18 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.get("/me", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("name email Role profilePicture");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching current user" });
+  }
+});
+
 
 //searching users
 
@@ -143,6 +160,17 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: "Error fetching users" });
   }
 });
+
+
+//admin side navbar
+router.get('/:userId', async (req, res) => {
+  const user = await User.findById(req.params.userId).select('name email profilePicture Role');
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  res.status(200).json({ user });
+});
+
+
 
 
 

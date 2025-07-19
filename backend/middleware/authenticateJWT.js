@@ -10,9 +10,12 @@ const authenticateJWT = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Secret key to verify the token
-    req.user = await User.findById(decoded.id); // Attach user info to the request object
-    next(); // Proceed to the next middleware or route handler
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); 
+    // Secret key to verify the token
+    req.user = await User.findById(decoded.id); 
+    // Attach user info to the request object
+    next();
+     // Proceed to the next middleware or route handler
   } catch (err) {
     return res.status(401).json({ message: 'Token is not valid' });
   }

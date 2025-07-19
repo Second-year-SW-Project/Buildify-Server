@@ -4,19 +4,29 @@ const transactionSchema = new mongoose.Schema({
     items: [
         {
             _id: String,
-            name: String,
-            category: String,
-            price: Number,
             quantity: Number,
         },
     ],
+    user_name: String,
+    address: String,
+    number: Number,
+    email: String,
     total: Number,
     status: String,
     user_id: String,
-    createdAt: {
-        type: Date,
-        default: Date.now,
+    stepTimestamps: {
+        Pending: { type: Date },
+        Successful: { type: Date },
+        Shipped: { type: Date },
+        Delivered: { type: Date },
+        Refunded: { type: Date },
+        Canceled: { type: Date },
     },
-});
+},
+    {
+        timestamps: true,
+    }
+);
+
 
 export const Transaction = mongoose.model("Transaction", transactionSchema);

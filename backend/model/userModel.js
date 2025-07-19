@@ -22,6 +22,8 @@ const userSchema = new mongoose.Schema(
     firstName: { type: String },
     lastName: { type: String },
     address: { type: String },
+    province: { type: String },
+    district: { type: String },
     profilePicture: { type: String, default: "" },
     password: {
       type: String,
@@ -39,7 +41,7 @@ const userSchema = new mongoose.Schema(
       },
     },
     googleId: {
-      type: String, 
+      type: String,
       unique: true,
       sparse: true, // Allows both Google and regular login for a user
     },
@@ -71,6 +73,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["admin", "user"],
       default: "user",
+    },
+    status: {
+      type: String,
+      enum: ['active', 'blocked', 'banned', 'inactive', 'suspended', 'pending'],
+      default: 'pending',
     },
     twoFASecret: {
       type: String

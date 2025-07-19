@@ -17,11 +17,14 @@ const addGames = async (req, res) => {
         const { name, description } = req.body;
         let { cpu, gpu, ram } = req.body;
         const image = req.file;
+        //Extracts game data from request body
+        //Gets uploaded image file from request
 
-        // Log the incoming data for debugging
+        // Log the incoming data for debugging.
         console.log('Received data:', { name, description, cpu, gpu, ram });
 
         // Parse JSON strings if they're strings
+        //Converts stringified JSON data back to objects
         if (typeof cpu === 'string') cpu = JSON.parse(cpu);
         if (typeof gpu === 'string') gpu = JSON.parse(gpu);
         if (typeof ram === 'string') ram = JSON.parse(ram);
@@ -43,7 +46,7 @@ const addGames = async (req, res) => {
         const imageUrl = result.secure_url;
         const imagePublicId = result.public_id;
 
-        // Create and save the game
+        // Creates a new game in the database using the gameModel
         const newGame = await gameModel.create({
             name,
             description,
@@ -62,27 +65,65 @@ const addGames = async (req, res) => {
     }
 };
 
-// List Games
+// Fetches all games from the database using gameModel.find({})
 const listGames = async (req, res) => {
     try {
-        const games = await gameModel.find({});
-        res.json({ success: true, games });
+        // Pagination parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 6;
+        const search = req.query.search || '';
+        const skip = (page - 1) * limit;
+
+        // Search filter
+        const filter = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } }
+                ]
+            }
+            : {};
+
+        // Get total count
+        const totalGames = await gameModel.countDocuments(filter);
+        // Get paginated games
+        const games = await gameModel.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        res.json({
+            success: true,
+            games,
+            pagination: {
+                total: totalGames,
+                page,
+                limit,
+                totalPages: Math.ceil(totalGames / limit)
+            }
+        });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.message,
+            pagination: null
+        });
     }
 };
 
 // Update Game
 const updateGames = async (req, res) => {
     try {
-        const { id } = req.params;
-        let updateData = { ...req.body };
+        const { id } = req.params;// The game ID is taken from the request parameters
+        let updateData = { ...req.body };//Data is taken 
 
+        //Stringified JSON are parsed into their corresponding objects
         if (updateData.cpu) updateData.cpu = parseJSON(updateData.cpu);
         if (updateData.gpu) updateData.gpu = parseJSON(updateData.gpu);
         if (updateData.ram) updateData.ram = parseJSON(updateData.ram);
 
+        //Update image if provided.Deletes old image from cloudinary and uploads new one
         if (req.file) {
             const existingGame = await gameModel.findById(id);
             if (existingGame?.imagePublicId) {
@@ -94,13 +135,14 @@ const updateGames = async (req, res) => {
             updateData.imagePublicId = result.public_id;
         }
 
+        //Updates the game in the database using the gameModel.findByIdAndUpdate method
         const updatedGame = await gameModel.findByIdAndUpdate(id, updateData, {
             new: true,
-            runValidators: true
+            runValidators: true//Ensures that the updated data adheres to the schema validation rules
         });
 
         if (!updatedGame) {
-            return res.status(404).json({ success: false, message: 'Game not found' });
+            return res.status(404).json({ success: false, message: 'Game not found', message: 'Game' });
         }
 
         res.json({ success: true, message: 'Game updated successfully', game: updatedGame });
@@ -129,7 +171,7 @@ const removeGames = async (req, res) => {
         // Delete image from Cloudinary
         await cloudinary.uploader.destroy(game.imagePublicId);
 
-        // Delete the game from the database
+        // Delete the game from the database  by using the gameModel.findByIdAndDelete method
         const deletedGame = await gameModel.findByIdAndDelete(id);
         if (!deletedGame) {
             return res.status(404).json({ success: false, message: 'Game not found' });
@@ -159,7 +201,7 @@ const getGameById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Game not found' });
         }
 
-        res.json({ success: true, game });
+        res.json({ success: true, game });//Sends the game data as a JSON response
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: error.message });
@@ -167,4 +209,4 @@ const getGameById = async (req, res) => {
 };
 
 // Update your export statement to include getGameById
-export { addGames, listGames, updateGames, removeGames, getGameById };
+export { addGames, listGames, updateGames, removeGames, getGameById };//Exports the functions to be used in routes

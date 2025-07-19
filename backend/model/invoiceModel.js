@@ -8,7 +8,7 @@ const itemSchema = new Schema({
     itemName: {
         type: String
     },
-    SubCategory: {
+    subCategory: {
         type: String
     },
     quantity: {
@@ -71,7 +71,7 @@ const invoiceSchema = new Schema({
     dueDate: {
         type: Date
     }
-});
+}, { timestamps: true });
 
 const Invoice = model("Invoice", invoiceSchema);
 export default Invoice;
