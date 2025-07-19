@@ -31,7 +31,7 @@ dotenv.config({ path: "./config.env" });
 app.use(cookieParser());
 app.use(
   cors({
-    origin: 'http://localhost:5173', // Frontend URL
+    origin: 'https://buildify-client-d5yu.vercel.app/', // Frontend URL
     credentials: true,
   })
 );
