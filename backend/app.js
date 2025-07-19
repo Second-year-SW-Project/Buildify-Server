@@ -31,7 +31,7 @@ dotenv.config({ path: "./config.env" });
 app.use(cookieParser());
 app.use(
   cors({
-    origin: 'https://buildify-client-d5yu.vercel.app/', // Frontend URL
+    origin: 'https://buildify-client-d5yu.vercel.app', // Frontend URL (removed trailing slash)
     credentials: true,
   })
 );
@@ -92,6 +92,28 @@ app.use('/api/comment', commentrouter);
 
 // Build Transaction Routes
 app.use('/api/build-transactions', buildTransactionRouter);
+
+// Root route for health check
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Buildify Backend API is running!',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/auth',
+      users: '/api/v1/users',
+      products: '/api/product',
+      builds: '/api/build',
+      checkout: '/api/checkout',
+      games: '/api/game',
+      reviews: '/api/review',
+      rma: '/api/rma',
+      comments: '/api/comment',
+      invoices: '/api/invoices',
+      buildTransactions: '/api/build-transactions'
+    }
+  });
+});
 
 // Handle Unmatched Routes
 app.all('*', (req, res, next) => {
