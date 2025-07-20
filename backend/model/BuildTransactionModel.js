@@ -38,6 +38,7 @@ const buildTransactionSchema = new mongoose.Schema({
     Shipped: { type: Date },
     Delivered: { type: Date },
     Canceled: { type: Date },
+    Successful: { type: Date },
   }
 }, { timestamps: true });
 

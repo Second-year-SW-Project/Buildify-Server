@@ -16,9 +16,10 @@ const transactionSchema = new mongoose.Schema({
     user_id: String,
     stepTimestamps: {
         Pending: { type: Date },
-        Successful: { type: Date },
+        Completed: { type: Date },
         Shipped: { type: Date },
         Delivered: { type: Date },
+        Successful: { type: Date },
         Refunded: { type: Date },
         Canceled: { type: Date },
     },
