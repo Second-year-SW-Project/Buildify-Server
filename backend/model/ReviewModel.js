@@ -12,7 +12,7 @@ const ReviewSchema = new Schema({
              return this.type === "product";
          }
     },
-    orderId: {
+    orderID: {
         type: String,
         required: true
     },
