@@ -525,6 +525,7 @@ export const getSingleBuildOrder = async (req, res) => {
       },
       {
         $addFields: {
+          "components.id": "$componentDetails._id",
           "components.name": "$componentDetails.name",
           "components.price": "$componentDetails.price",
           "components.product_image": {
@@ -1151,6 +1152,204 @@ export const getTopBuilds = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: `Server Error: ${error.message}`,
+    });
+  }
+};
+
+// Get build summary totals for dashboard
+export const getBuildSummaryTotals = async (req, res) => {
+  try {
+    const { filter = "All" } = req.query;
+
+    // Date range logic (same as order summary)
+    let dateFilter = {};
+    if (filter !== "All") {
+      const now = new Date();
+      let start,
+        end = new Date(now);
+      switch (filter) {
+        case "today":
+          start = new Date(now.setHours(0, 0, 0, 0));
+          end = new Date(now.setHours(23, 59, 59, 999));
+          break;
+        case "yesterday":
+          start = new Date(now.setDate(now.getDate() - 1));
+          start.setHours(0, 0, 0, 0);
+          end = new Date(now.setHours(23, 59, 59, 999));
+          break;
+        case "thisweek":
+          const today = new Date();
+          const day = today.getDay();
+          const diffToMonday = day === 0 ? -6 : 1 - day;
+
+          start = new Date(today);
+          start.setDate(today.getDate() + diffToMonday);
+          start.setHours(0, 0, 0, 0);
+
+          end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          break;
+        case "lastweek": {
+          const today = new Date();
+          const day = today.getDay();
+
+          const diffToLastMonday = day === 0 ? 13 : 7 + (day - 1);
+
+          start = new Date(today);
+          start.setDate(today.getDate() - diffToLastMonday);
+          start.setHours(0, 0, 0, 0);
+
+          end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          break;
+        }
+        case "thismonth":
+          start = new Date(now.getFullYear(), now.getMonth(), 1);
+          end = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999
+          );
+          break;
+        case "lastmonth": {
+          const today = new Date();
+          const year =
+            today.getMonth() === 0
+              ? today.getFullYear() - 1
+              : today.getFullYear();
+          const month = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+
+          start = new Date(year, month, 1);
+          end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+          break;
+        }
+        default:
+          start = null;
+          end = null;
+      }
+      if (start && end) {
+        dateFilter = {
+          createdAt: { $gte: start, $lte: end },
+        };
+      }
+    }
+
+    // Total Build Orders (excluding cancelled)
+    const totalBuildOrders = await BuildTransaction.countDocuments({
+      buildStatus: { $nin: ["Canceled"] },
+      ...dateFilter,
+    });
+
+    // Pending Build Orders
+    const pendingBuildOrders = await BuildTransaction.countDocuments({
+      buildStatus: "Pending",
+      ...dateFilter,
+    });
+
+    // Total Build Revenue (Delivered builds)
+    const totalBuildRevenueAgg = await BuildTransaction.aggregate([
+      { $match: { buildStatus: { $in: ["Delivered"] }, ...dateFilter } },
+      { $group: { _id: null, total: { $sum: "$totalCharge" } } },
+    ]);
+    const totalBuildRevenue = totalBuildRevenueAgg[0]?.total || 0;
+
+    res.status(200).json({
+      totalBuildOrders,
+      pendingBuildOrders,
+      totalBuildRevenue,
+    });
+  } catch (err) {
+    console.error("Error fetching build summary:", err);
+    res.status(500).json({
+      message: "Failed to fetch build summary",
+      error: err.message,
+    });
+  }
+};
+
+// Get build summary for dashboard (pending builds)
+export const getBuildSummary = async (req, res) => {
+  try {
+    console.log("getBuildSummary called with query:", req.query);
+    const { page = 1, limit = 5 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get total count of pending builds
+    const totalBuilds = await BuildTransaction.countDocuments({
+      buildStatus: "Pending",
+    });
+    console.log("Total pending builds:", totalBuilds);
+
+    // Use aggregation pipeline to get pending builds with user details
+    const builds = await BuildTransaction.aggregate([
+      { $match: { buildStatus: "Pending" } },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) },
+      // Add lookup for user details
+      {
+        $lookup: {
+          from: "users",
+          let: { userId: { $toObjectId: "$userId" } },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$_id", "$$userId"] },
+              },
+            },
+            {
+              $project: {
+                name: 1,
+                email: 1,
+                profilePicture: 1,
+              },
+            },
+          ],
+          as: "userDetails",
+        },
+      },
+      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          buildName: 1,
+          buildStatus: 1,
+          totalCharge: 1,
+          userId: 1,
+          userName: "$userDetails.name",
+          userEmail: "$userDetails.email",
+          userAddress: 1,
+          createdAt: 1,
+          profilePicture: "$userDetails.profilePicture",
+          userDetails: "$userDetails",
+        },
+      },
+    ]);
+
+    console.log("Found builds:", builds.length);
+
+    res.status(200).json({
+      Success: true,
+      data: builds,
+      pagination: {
+        total: totalBuilds,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(totalBuilds / parseInt(limit)),
+      },
+    });
+  } catch (err) {
+    console.error("Error in getBuildSummary:", err);
+    res.status(500).json({
+      Success: false,
+      message: "Failed to fetch builds",
+      error: err.message,
     });
   }
 };

@@ -548,7 +548,7 @@ export const getOrdersSummaryTotals = async (req, res) => {
 
         // Total Price (Shipped/Delivered)
         const totalPriceAgg = await Transaction.aggregate([
-            { $match: { status: { $in: ['Successful'] }, ...dateFilter } },
+            { $match: { status: { $in: ['Completed'] }, ...dateFilter } },
             { $group: { _id: null, total: { $sum: "$total" } } }
         ]);
         const totalPrice = totalPriceAgg[0]?.total || 0;

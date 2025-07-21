@@ -52,7 +52,7 @@ function validateProductFields(product, isUpdate = false) {
     accessories: [],
     externals: [],
     cables_and_connectors: []
-};
+  };
   const errors = [];
   const type = product.type;
   if (!type || !uniqueFieldsByType[type]) {
@@ -367,41 +367,39 @@ export const deleteProduct = async (req, res) => {
 // Get products by attribute
 export const getProductsByAttribute = async (req, res) => {
   try {
-      const query = {};
-      const {
-          attribute,
-          value,
-          manufacturer,
-          minPrice,
-          maxPrice,
-          vram, // New: expecting 'vram' query parameter(s)
-          interfaceType,
-          memoryCapacity,
-          memoryType,
-          coreCount,
-          threadCount,
-          socketType,
-          motherboardChipset,
-          wattage,
-          efficiencyRating,
-          storageCapacity,
-          storageType,
-          supportedMotherboardSizes,
-          maxGpuLength,
-          ram,
-          graphicCard,
-          storage,
-          ramSize,
-          componentType,
-          displaySize,
-          panelType,
-          refreshRate,
-
-          
-          ...otherDynamicFilters
-      } = req.query;
+    const query = {};
+    const {
+      attribute,
+      value,
+      manufacturer,
+      minPrice,
+      maxPrice,
+      vram, // New: expecting 'vram' query parameter(s)
+      interfaceType,
+      memoryCapacity,
+      memoryType,
+      coreCount,
+      threadCount,
+      socketType,
+      motherboardChipset,
+      wattage,
+      efficiencyRating,
+      storageCapacity,
+      storageType,
+      supportedMotherboardSizes,
+      maxGpuLength,
+      ram,
+      graphicCard,
+      storage,
+      ramSize,
+      componentType,
+      displaySize,
+      panelType,
+      refreshRate,
 
 
+      ...otherDynamicFilters
+    } = req.query;
 
 
 
@@ -411,371 +409,373 @@ export const getProductsByAttribute = async (req, res) => {
 
 
 
-      // 1. Handle the primary category/type filter
-      if (attribute && value) {
-          if (attribute.toLowerCase() === 'type') {
-              query.type = value; // Assuming 'type' is the field in your Product schema for category
-          } else {
-              query[toSnakeCase(attribute)] = value;
-          }
+
+
+    // 1. Handle the primary category/type filter
+    if (attribute && value) {
+      if (attribute.toLowerCase() === 'type') {
+        query.type = value; // Assuming 'type' is the field in your Product schema for category
+      } else {
+        query[toSnakeCase(attribute)] = value;
       }
-
-      // 2. Handle Manufacturer Filter
-      if (manufacturer) {
-          const manufacturerDbField = 'manufacturer'; // Your DB field for manufacturer
-          const manufacturersToFilter = Array.isArray(manufacturer) ? manufacturer : [manufacturer];
-          const validManufacturers = manufacturersToFilter.filter(m => typeof m === 'string' && m.trim() !== '');
-          if (validManufacturers.length > 0) {
-               query[manufacturerDbField] = { $in: validManufacturers };
-          }
-      }
-
-
-        if (memoryType) {
-        const memoryTypeDbField = 'memory_type'; // Your DB field for memoryType for RAM
-        const memoryTypesToFilter = Array.isArray(memoryType) ? memoryType : [memoryType];
-        const validMemoryTypes = memoryTypesToFilter.filter(mt => typeof mt === 'string' && mt.trim() !== '');
-        if (validMemoryTypes.length > 0) {
-          query[memoryTypeDbField] = { $in: validMemoryTypes };
-        }
-      }
-
-          if (coreCount) {
-            const coreCountDbField = 'core_count'; // Your DB field for core count
-            const coreCountValues = Array.isArray(coreCount) ? coreCount : [coreCount];
-            const numericCoreCountValues = coreCountValues
-              .map(v => Number(v))
-              .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-            if (numericCoreCountValues.length > 0) {
-              query[coreCountDbField] = { $in: numericCoreCountValues };
-            }
-          }
-          
-          
-          if (threadCount) {
-              const threadCountDbField = 'thread_count'; // Your DB field for thread count
-              const threadCountValues = Array.isArray(threadCount) ? threadCount : [threadCount];
-              const numericThreadCountValues = threadCountValues
-                .map(v => Number(v))
-                .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-              if (numericThreadCountValues.length > 0) {
-                query[threadCountDbField] = { $in: numericThreadCountValues };
-              }
-            }
-
-
-
-            if (socketType) {
-                  const socketTypeDbField = 'socket_type'; // Your DB field for socket type
-                  const socketTypesToFilter = Array.isArray(socketType) ? socketType : [socketType];
-                  const validSocketTypes = socketTypesToFilter.filter(st => typeof st === 'string' && st.trim() !== '');
-                  if (validSocketTypes.length > 0) {
-                    query[socketTypeDbField] = { $in: validSocketTypes };
-                  }
-                }
-
-
-
-
-
-            //for motherboards
-
-          if (motherboardChipset) {
-                const chipsetDbField = 'motherboard_chipset'; // Your DB field for motherboard chipset
-                const chipsetsToFilter = Array.isArray(motherboardChipset) ? motherboardChipset : [motherboardChipset];
-                const validChipsets = chipsetsToFilter.filter(c => typeof c === 'string' && c.trim() !== '');
-                if (validChipsets.length > 0) {
-                  query[chipsetDbField] = { $in: validChipsets };
-                }
-          } 
-          
-          
-          //for powersupplys
-
-          if (wattage) {
-                  const wattageDbField = 'wattage'; // Your DB field for wattage
-                  const wattageValues = Array.isArray(wattage) ? wattage : [wattage];
-                  const numericWattageValues = wattageValues
-                    .map(v => Number(v))
-                    .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-                  if (numericWattageValues.length > 0) {
-                    query[wattageDbField] = { $in: numericWattageValues };
-                  }
-                }
-
-
-
-                if (efficiencyRating) {
-                const efficiencyRatingDbField = 'efficiency_rating'; // Your DB field for efficiency rating
-                const efficiencyRatingsToFilter = Array.isArray(efficiencyRating) ? efficiencyRating : [efficiencyRating];
-                const validEfficiencyRatings = efficiencyRatingsToFilter.filter(er => typeof er === 'string' && er.trim() !== '');
-                if (validEfficiencyRatings.length > 0) {
-                  query[efficiencyRatingDbField] = { $in: validEfficiencyRatings };
-                }
-              }
-
-
-
-              //for storages
-
-              if (storageCapacity) {
-              const storageCapacityDbField = 'storage_capacity'; // Your DB field for storage capacity
-              const storageCapacityValues = Array.isArray(storageCapacity) ? storageCapacity : [storageCapacity];
-              const numericStorageCapacityValues = storageCapacityValues
-                .map(v => Number(v))
-                .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-              if (numericStorageCapacityValues.length > 0) {
-                query[storageCapacityDbField] = { $in: numericStorageCapacityValues };
-              }
-            }
-
-
-            if (storageType) {
-              const storageTypeDbField = 'storage_type'; // Your DB field for storage type (e.g., SSD, HDD, NVMe)
-              const storageTypesToFilter = Array.isArray(storageType) ? storageType : [storageType];
-              const validStorageTypes = storageTypesToFilter.filter(st => typeof st === 'string' && st.trim() !== '');
-              if (validStorageTypes.length > 0) {
-                query[storageTypeDbField] = { $in: validStorageTypes };
-              }
-            }
-
-
-
-            if (supportedMotherboardSizes) {
-                const motherboardSizesDbField = 'supported_motherboard_sizes'; // Your DB field for supported motherboard sizes
-                const motherboardSizesToFilter = Array.isArray(supportedMotherboardSizes) ? supportedMotherboardSizes : [supportedMotherboardSizes];
-                const validMotherboardSizes = motherboardSizesToFilter.filter(s => typeof s === 'string' && s.trim() !== '');
-                if (validMotherboardSizes.length > 0) {
-                  query[motherboardSizesDbField] = { $in: validMotherboardSizes };
-                }
-              }
-
-
-
-              if (maxGpuLength) {
-                  const maxGpuLengthDbField = 'max_gpu_length'; // Your DB field for maximum GPU length
-                  const maxGpuLengthValues = Array.isArray(maxGpuLength) ? maxGpuLength : [maxGpuLength];
-                  const numericMaxGpuLengthValues = maxGpuLengthValues
-                    .map(v => Number(v))
-                    .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-                  if (numericMaxGpuLengthValues.length > 0) {
-                    query[maxGpuLengthDbField] = { $in: numericMaxGpuLengthValues };
-                  }
-                }
-
-
-                if (ram) {
-                      const ramDbField = 'ram'; // Your DB field for the RAM model/identifier
-                      const ramsToFilter = Array.isArray(ram) ? ram : [ram];
-                      const validRams = ramsToFilter.filter(r => typeof r === 'string' && r.trim() !== '');
-                      if (validRams.length > 0) {
-                        query[ramDbField] = { $in: validRams };
-                      }
-                    }
-
-
-                    if (graphicCard) {
-                          const graphicCardDbField = 'graphic_card'; // Your DB field for the graphics card model/identifier
-                          const graphicCardsToFilter = Array.isArray(graphicCard) ? graphicCard : [graphicCard];
-                          const validGraphicCards = graphicCardsToFilter.filter(gc => typeof gc === 'string' && gc.trim() !== '');
-                          if (validGraphicCards.length > 0) {
-                            query[graphicCardDbField] = { $in: validGraphicCards };
-                          }
-                        }
-
-                                      if (storage) {
-                const storageDbField = 'storage'; // Your DB field for the storage device model/identifier
-                const storagesToFilter = Array.isArray(storage) ? storage : [storage];
-                const validStorages = storagesToFilter.filter(s => typeof s === 'string' && s.trim() !== '');
-                if (validStorages.length > 0) {
-                  query[storageDbField] = { $in: validStorages };
-                }
-              }
-
-
-                          if (ramSize) {
-              const ramSizeDbField = 'ram_size'; // Your DB field for RAM size (e.g., 8GB, 16GB)
-              const ramSizeValues = Array.isArray(ramSize) ? ramSize : [ramSize];
-              const numericRamSizeValues = ramSizeValues
-                .map(v => Number(v))
-                .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-              if (numericRamSizeValues.length > 0) {
-                query[ramSizeDbField] = { $in: numericRamSizeValues };
-              }
-            }
-
-
-            if (componentType) {
-                const componentTypeDbField = 'component_type'; // Your DB field for component type (e.g., CPU, GPU, RAM)
-                const componentTypesToFilter = Array.isArray(componentType) ? componentType : [componentType];
-                const validComponentTypes = componentTypesToFilter.filter(ct => typeof ct === 'string' && ct.trim() !== '');
-                if (validComponentTypes.length > 0) {
-                  query[componentTypeDbField] = { $in: validComponentTypes };
-                }
-              }
-
-
-            if (displaySize) {
-              const displaySizeDbField = 'display_size'; // Your DB field for display size (e.g., 27, 32)
-              const displaySizeValues = Array.isArray(displaySize) ? displaySize : [displaySize];
-              const numericDisplaySizeValues = displaySizeValues
-                .map(v => Number(v))
-                .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-              if (numericDisplaySizeValues.length > 0) {
-                query[displaySizeDbField] = { $in: numericDisplaySizeValues };
-              }
-            }
-
-
-            if (panelType) {
-              const panelTypeDbField = 'panel_type'; // Your DB field for panel type (e.g., IPS, VA, TN)
-              const panelTypesToFilter = Array.isArray(panelType) ? panelType : [panelType];
-              const validPanelTypes = panelTypesToFilter.filter(pt => typeof pt === 'string' && pt.trim() !== '');
-              if (validPanelTypes.length > 0) {
-                query[panelTypeDbField] = { $in: validPanelTypes };
-              }
-            }
-
-
-            if (refreshRate) {
-              const refreshRateDbField = 'refresh_rate'; // Your DB field for refresh rate (e.g., 144Hz, 240Hz)
-              const refreshRateValues = Array.isArray(refreshRate) ? refreshRate : [refreshRate];
-              const numericRefreshRateValues = refreshRateValues
-                .map(v => Number(v))
-                .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-              if (numericRefreshRateValues.length > 0) {
-                query[refreshRateDbField] = { $in: numericRefreshRateValues };
-              }
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      if (vram) {
-        const vramDbField = 'vram';
-        const vramValues = Array.isArray(vram) ? vram : [vram];
-        const numericVramValues = vramValues
-            .map(v => Number(v))
-            .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-        if (numericVramValues.length > 0) {
-            query[vramDbField] = { $in: numericVramValues };
-        }
     }
 
-          if (interfaceType) {
-            const interfaceDbField = "interface_type";
-            const interfaceValues = Array.isArray(interfaceType) ? interfaceType : [interfaceType];
-            const validinterfaceValues = interfaceValues.filter(m => typeof m === 'string' && m.trim() !== '');
-          if (validinterfaceValues.length > 0) {
-               query[interfaceDbField] = { $in: validinterfaceValues };
-          }
-          }
-
-
-
-          if (memoryCapacity) {
-            const ramDbField = "memory_capacity";
-            const ramValues = Array.isArray(memoryCapacity)
-              ? memoryCapacity
-              : [memoryCapacity];
-            const numericRamValues = ramValues
-              .map((v) => Number(v))
-              .filter((n) => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
-
-            if (numericRamValues.length > 0) {
-              query[ramDbField] = { $in: numericRamValues };
-            }
-          }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      // 3. Handle Price Range Filter
-      const priceDbField = 'price'; // !!! IMPORTANT: Change to your actual DB field name for product price !!!
-      const priceConditions = {};
-      if (minPrice !== undefined && minPrice !== '' && !isNaN(Number(minPrice))) {
-          priceConditions.$gte = Number(minPrice);
+    // 2. Handle Manufacturer Filter
+    if (manufacturer) {
+      const manufacturerDbField = 'manufacturer'; // Your DB field for manufacturer
+      const manufacturersToFilter = Array.isArray(manufacturer) ? manufacturer : [manufacturer];
+      const validManufacturers = manufacturersToFilter.filter(m => typeof m === 'string' && m.trim() !== '');
+      if (validManufacturers.length > 0) {
+        query[manufacturerDbField] = { $in: validManufacturers };
       }
-      if (maxPrice !== undefined && maxPrice !== '' && !isNaN(Number(maxPrice))) {
-          priceConditions.$lte = Number(maxPrice);
+    }
+
+
+    if (memoryType) {
+      const memoryTypeDbField = 'memory_type'; // Your DB field for memoryType for RAM
+      const memoryTypesToFilter = Array.isArray(memoryType) ? memoryType : [memoryType];
+      const validMemoryTypes = memoryTypesToFilter.filter(mt => typeof mt === 'string' && mt.trim() !== '');
+      if (validMemoryTypes.length > 0) {
+        query[memoryTypeDbField] = { $in: validMemoryTypes };
       }
-      if (Object.keys(priceConditions).length > 0) {
-          query[priceDbField] = priceConditions;
+    }
+
+    if (coreCount) {
+      const coreCountDbField = 'core_count'; // Your DB field for core count
+      const coreCountValues = Array.isArray(coreCount) ? coreCount : [coreCount];
+      const numericCoreCountValues = coreCountValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericCoreCountValues.length > 0) {
+        query[coreCountDbField] = { $in: numericCoreCountValues };
       }
-
-      // 4. Handle VRAM Filter
-      // IMPORTANT: Change 'vram_gb' to your actual DB field name for VRAM capacity (numeric)
+    }
 
 
-      // 5. (Optional) Handle other dynamic attribute filters
-      // ... (your existing logic for otherDynamicFilters, ensure it doesn't conflict)
+    if (threadCount) {
+      const threadCountDbField = 'thread_count'; // Your DB field for thread count
+      const threadCountValues = Array.isArray(threadCount) ? threadCount : [threadCount];
+      const numericThreadCountValues = threadCountValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
 
-      console.log("Executing backend query:", JSON.stringify(query, null, 2));
+      if (numericThreadCountValues.length > 0) {
+        query[threadCountDbField] = { $in: numericThreadCountValues };
+      }
+    }
 
-      const products = await Product.find(query);
 
-      const formattedProducts = products.map((product) => {
-          const productObj = product.toObject();
-          const id = productObj._id;
-          const camelCasedProduct = toCamelCase(productObj); // Assuming toCamelCase is defined
-          return {
-              ...camelCasedProduct,
-              _id: id.toString(),
-          };
-      });
-      res.status(200).json(formattedProducts);
+
+    if (socketType) {
+      const socketTypeDbField = 'socket_type'; // Your DB field for socket type
+      const socketTypesToFilter = Array.isArray(socketType) ? socketType : [socketType];
+      const validSocketTypes = socketTypesToFilter.filter(st => typeof st === 'string' && st.trim() !== '');
+      if (validSocketTypes.length > 0) {
+        query[socketTypeDbField] = { $in: validSocketTypes };
+      }
+    }
+
+
+
+
+
+    //for motherboards
+
+    if (motherboardChipset) {
+      const chipsetDbField = 'motherboard_chipset'; // Your DB field for motherboard chipset
+      const chipsetsToFilter = Array.isArray(motherboardChipset) ? motherboardChipset : [motherboardChipset];
+      const validChipsets = chipsetsToFilter.filter(c => typeof c === 'string' && c.trim() !== '');
+      if (validChipsets.length > 0) {
+        query[chipsetDbField] = { $in: validChipsets };
+      }
+    }
+
+
+    //for powersupplys
+
+    if (wattage) {
+      const wattageDbField = 'wattage'; // Your DB field for wattage
+      const wattageValues = Array.isArray(wattage) ? wattage : [wattage];
+      const numericWattageValues = wattageValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericWattageValues.length > 0) {
+        query[wattageDbField] = { $in: numericWattageValues };
+      }
+    }
+
+
+
+    if (efficiencyRating) {
+      const efficiencyRatingDbField = 'efficiency_rating'; // Your DB field for efficiency rating
+      const efficiencyRatingsToFilter = Array.isArray(efficiencyRating) ? efficiencyRating : [efficiencyRating];
+      const validEfficiencyRatings = efficiencyRatingsToFilter.filter(er => typeof er === 'string' && er.trim() !== '');
+      if (validEfficiencyRatings.length > 0) {
+        query[efficiencyRatingDbField] = { $in: validEfficiencyRatings };
+      }
+    }
+
+
+
+    //for storages
+
+    if (storageCapacity) {
+      const storageCapacityDbField = 'storage_capacity'; // Your DB field for storage capacity
+      const storageCapacityValues = Array.isArray(storageCapacity) ? storageCapacity : [storageCapacity];
+      const numericStorageCapacityValues = storageCapacityValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericStorageCapacityValues.length > 0) {
+        query[storageCapacityDbField] = { $in: numericStorageCapacityValues };
+      }
+    }
+
+
+    if (storageType) {
+      const storageTypeDbField = 'storage_type'; // Your DB field for storage type (e.g., SSD, HDD, NVMe)
+      const storageTypesToFilter = Array.isArray(storageType) ? storageType : [storageType];
+      const validStorageTypes = storageTypesToFilter.filter(st => typeof st === 'string' && st.trim() !== '');
+      if (validStorageTypes.length > 0) {
+        query[storageTypeDbField] = { $in: validStorageTypes };
+      }
+    }
+
+
+
+    if (supportedMotherboardSizes) {
+      const motherboardSizesDbField = 'supported_motherboard_sizes'; // Your DB field for supported motherboard sizes
+      const motherboardSizesToFilter = Array.isArray(supportedMotherboardSizes) ? supportedMotherboardSizes : [supportedMotherboardSizes];
+      const validMotherboardSizes = motherboardSizesToFilter.filter(s => typeof s === 'string' && s.trim() !== '');
+      if (validMotherboardSizes.length > 0) {
+        query[motherboardSizesDbField] = { $in: validMotherboardSizes };
+      }
+    }
+
+
+
+    if (maxGpuLength) {
+      const maxGpuLengthDbField = 'max_gpu_length'; // Your DB field for maximum GPU length
+      const maxGpuLengthValues = Array.isArray(maxGpuLength) ? maxGpuLength : [maxGpuLength];
+      const numericMaxGpuLengthValues = maxGpuLengthValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericMaxGpuLengthValues.length > 0) {
+        query[maxGpuLengthDbField] = { $in: numericMaxGpuLengthValues };
+      }
+    }
+
+
+    if (ram) {
+      const ramDbField = 'ram'; // Your DB field for the RAM model/identifier
+      const ramsToFilter = Array.isArray(ram) ? ram : [ram];
+      const validRams = ramsToFilter.filter(r => typeof r === 'string' && r.trim() !== '');
+      if (validRams.length > 0) {
+        query[ramDbField] = { $in: validRams };
+      }
+    }
+
+
+    if (graphicCard) {
+      const graphicCardDbField = 'graphic_card'; // Your DB field for the graphics card model/identifier
+      const graphicCardsToFilter = Array.isArray(graphicCard) ? graphicCard : [graphicCard];
+      const validGraphicCards = graphicCardsToFilter.filter(gc => typeof gc === 'string' && gc.trim() !== '');
+      if (validGraphicCards.length > 0) {
+        query[graphicCardDbField] = { $in: validGraphicCards };
+      }
+    }
+
+    if (storage) {
+      const storageDbField = 'storage'; // Your DB field for the storage device model/identifier
+      const storagesToFilter = Array.isArray(storage) ? storage : [storage];
+      const validStorages = storagesToFilter.filter(s => typeof s === 'string' && s.trim() !== '');
+      if (validStorages.length > 0) {
+        query[storageDbField] = { $in: validStorages };
+      }
+    }
+
+
+    if (ramSize) {
+      const ramSizeDbField = 'ram_size'; // Your DB field for RAM size (e.g., 8GB, 16GB)
+      const ramSizeValues = Array.isArray(ramSize) ? ramSize : [ramSize];
+      const numericRamSizeValues = ramSizeValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericRamSizeValues.length > 0) {
+        query[ramSizeDbField] = { $in: numericRamSizeValues };
+      }
+    }
+
+
+    if (componentType) {
+      const componentTypeDbField = 'component_type'; // Your DB field for component type (e.g., CPU, GPU, RAM)
+      const componentTypesToFilter = Array.isArray(componentType) ? componentType : [componentType];
+      const validComponentTypes = componentTypesToFilter.filter(ct => typeof ct === 'string' && ct.trim() !== '');
+      if (validComponentTypes.length > 0) {
+        query[componentTypeDbField] = { $in: validComponentTypes };
+      }
+    }
+
+
+    if (displaySize) {
+      const displaySizeDbField = 'display_size'; // Your DB field for display size (e.g., 27, 32)
+      const displaySizeValues = Array.isArray(displaySize) ? displaySize : [displaySize];
+      const numericDisplaySizeValues = displaySizeValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericDisplaySizeValues.length > 0) {
+        query[displaySizeDbField] = { $in: numericDisplaySizeValues };
+      }
+    }
+
+
+    if (panelType) {
+      const panelTypeDbField = 'panel_type'; // Your DB field for panel type (e.g., IPS, VA, TN)
+      const panelTypesToFilter = Array.isArray(panelType) ? panelType : [panelType];
+      const validPanelTypes = panelTypesToFilter.filter(pt => typeof pt === 'string' && pt.trim() !== '');
+      if (validPanelTypes.length > 0) {
+        query[panelTypeDbField] = { $in: validPanelTypes };
+      }
+    }
+
+
+    if (refreshRate) {
+      const refreshRateDbField = 'refresh_rate'; // Your DB field for refresh rate (e.g., 144Hz, 240Hz)
+      const refreshRateValues = Array.isArray(refreshRate) ? refreshRate : [refreshRate];
+      const numericRefreshRateValues = refreshRateValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericRefreshRateValues.length > 0) {
+        query[refreshRateDbField] = { $in: numericRefreshRateValues };
+      }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (vram) {
+      const vramDbField = 'vram';
+      const vramValues = Array.isArray(vram) ? vram : [vram];
+      const numericVramValues = vramValues
+        .map(v => Number(v))
+        .filter(n => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericVramValues.length > 0) {
+        query[vramDbField] = { $in: numericVramValues };
+      }
+    }
+
+    if (interfaceType) {
+      const interfaceDbField = "interface_type";
+      const interfaceValues = Array.isArray(interfaceType) ? interfaceType : [interfaceType];
+      const validinterfaceValues = interfaceValues.filter(m => typeof m === 'string' && m.trim() !== '');
+      if (validinterfaceValues.length > 0) {
+        query[interfaceDbField] = { $in: validinterfaceValues };
+      }
+    }
+
+
+
+    if (memoryCapacity) {
+      const ramDbField = "memory_capacity";
+      const ramValues = Array.isArray(memoryCapacity)
+        ? memoryCapacity
+        : [memoryCapacity];
+      const numericRamValues = ramValues
+        .map((v) => Number(v))
+        .filter((n) => !isNaN(n) && n > 0); // Ensure they are valid positive numbers
+
+      if (numericRamValues.length > 0) {
+        query[ramDbField] = { $in: numericRamValues };
+      }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // 3. Handle Price Range Filter
+    const priceDbField = 'price'; // !!! IMPORTANT: Change to your actual DB field name for product price !!!
+    const priceConditions = {};
+    if (minPrice !== undefined && minPrice !== '' && !isNaN(Number(minPrice))) {
+      priceConditions.$gte = Number(minPrice);
+    }
+    if (maxPrice !== undefined && maxPrice !== '' && !isNaN(Number(maxPrice))) {
+      priceConditions.$lte = Number(maxPrice);
+    }
+    if (Object.keys(priceConditions).length > 0) {
+      query[priceDbField] = priceConditions;
+    }
+
+    // 4. Handle VRAM Filter
+    // IMPORTANT: Change 'vram_gb' to your actual DB field name for VRAM capacity (numeric)
+
+
+    // 5. (Optional) Handle other dynamic attribute filters
+    // ... (your existing logic for otherDynamicFilters, ensure it doesn't conflict)
+
+    console.log("Executing backend query:", JSON.stringify(query, null, 2));
+
+    const products = await Product.find(query);
+
+    const formattedProducts = products.map((product) => {
+      const productObj = product.toObject();
+      const id = productObj._id;
+      const camelCasedProduct = toCamelCase(productObj); // Assuming toCamelCase is defined
+      return {
+        ...camelCasedProduct,
+        _id: id.toString(),
+      };
+    });
+    res.status(200).json(formattedProducts);
   } catch (error) {
-      console.error("Error in getProductsByAttribute:", error);
-      res.status(500).json({ error: error.message });
+    console.error("Error in getProductsByAttribute:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 // Get a product by ID
@@ -848,240 +848,349 @@ export const getProductCountsByMainCategory = async (req, res) => {
 
 
 export const getManufacturersByCategory = async (req, res) => {
-    try {
-        const { category } = req.query;
-        if (!category) {
-            return res.status(400).json({ message: 'Category is required.' });
-        }
-
-        // Assuming your Product model has 'type' and 'manufacturer' fields
-        const products = await Product.find({ type: category }).distinct('manufacturer');
-
-        // Format the manufacturers into the { display, value } structure
-        const formattedManufacturers = products.map(manufacturer => ({
-            display: manufacturer, // You might want to format this
-            value: manufacturer,
-        }));
-
-        res.status(200).json(formattedManufacturers);
-    } catch (error) {
-        console.error('Error fetching manufacturers by category:', error);
-        res.status(500).json({ error: error.message });
+  try {
+    const { category } = req.query;
+    if (!category) {
+      return res.status(400).json({ message: 'Category is required.' });
     }
+
+    // Assuming your Product model has 'type' and 'manufacturer' fields
+    const products = await Product.find({ type: category }).distinct('manufacturer');
+
+    // Format the manufacturers into the { display, value } structure
+    const formattedManufacturers = products.map(manufacturer => ({
+      display: manufacturer, // You might want to format this
+      value: manufacturer,
+    }));
+
+    res.status(200).json(formattedManufacturers);
+  } catch (error) {
+    console.error('Error fetching manufacturers by category:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getPrebuildRamSizes = async (req, res) => {
-    try {
-        // Find all prebuild products and get distinct RAM sizes
-        const ramSizes = await Product.find({ type: 'prebuild' }).distinct('ram_size');
+  try {
+    // Find all prebuild products and get distinct RAM sizes
+    const ramSizes = await Product.find({ type: 'prebuild' }).distinct('ram_size');
 
-        // Format the RAM sizes into the { display, value } structure
-        const formattedRamSizes = ramSizes.map(size => ({
-            display: `${size} GB`,
-            value: size,
-        }));
+    // Format the RAM sizes into the { display, value } structure
+    const formattedRamSizes = ramSizes.map(size => ({
+      display: `${size} GB`,
+      value: size,
+    }));
 
-        res.status(200).json(formattedRamSizes);
-    } catch (error) {
-        console.error('Error fetching prebuild RAM sizes:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedRamSizes);
+  } catch (error) {
+    console.error('Error fetching prebuild RAM sizes:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getLaptopGraphicCards = async (req, res) => {
-    try {
-        // Find all laptop products and get distinct graphic cards
-        const graphicCards = await Product.find({ type: 'laptop' }).distinct('graphic_card');
+  try {
+    // Find all laptop products and get distinct graphic cards
+    const graphicCards = await Product.find({ type: 'laptop' }).distinct('graphic_card');
 
-        // Format the graphic cards into the { display, value } structure
-        const formattedGraphicCards = graphicCards.map(card => ({
-            display: card,
-            value: card,
-        }));
+    // Format the graphic cards into the { display, value } structure
+    const formattedGraphicCards = graphicCards.map(card => ({
+      display: card,
+      value: card,
+    }));
 
-        res.status(200).json(formattedGraphicCards);
-    } catch (error) {
-        console.error('Error fetching laptop graphic cards:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedGraphicCards);
+  } catch (error) {
+    console.error('Error fetching laptop graphic cards:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getMotherboardChipsets = async (req, res) => {
-    try {
-        // Find all motherboard products and get distinct chipsets
-        const chipsets = await Product.find({ type: 'motherboard' }).distinct('motherboard_chipset');
+  try {
+    // Find all motherboard products and get distinct chipsets
+    const chipsets = await Product.find({ type: 'motherboard' }).distinct('motherboard_chipset');
 
-        // Format the chipsets into the { display, value } structure
-        const formattedChipsets = chipsets.map(chipset => ({
-            display: chipset,
-            value: chipset,
-        }));
+    // Format the chipsets into the { display, value } structure
+    const formattedChipsets = chipsets.map(chipset => ({
+      display: chipset,
+      value: chipset,
+    }));
 
-        res.status(200).json(formattedChipsets);
-    } catch (error) {
-        console.error('Error fetching motherboard chipsets:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedChipsets);
+  } catch (error) {
+    console.error('Error fetching motherboard chipsets:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getPowerWattages = async (req, res) => {
-    try {
-        // Find all power supply products and get distinct wattages
-        const wattages = await Product.find({ type: 'power' }).distinct('wattage');
+  try {
+    // Find all power supply products and get distinct wattages
+    const wattages = await Product.find({ type: 'power' }).distinct('wattage');
 
-        // Format the wattages into the { display, value } structure
-        const formattedWattages = wattages.map(wattage => ({
-            display: `${wattage}W`,
-            value: wattage,
-        }));
+    // Format the wattages into the { display, value } structure
+    const formattedWattages = wattages.map(wattage => ({
+      display: `${wattage}W`,
+      value: wattage,
+    }));
 
-        res.status(200).json(formattedWattages);
-    } catch (error) {
-        console.error('Error fetching power wattages:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedWattages);
+  } catch (error) {
+    console.error('Error fetching power wattages:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getPowerEfficiencyRatings = async (req, res) => {
-    try {
-        // Find all power supply products and get distinct efficiency ratings
-        const efficiencyRatings = await Product.find({ type: 'power' }).distinct('efficiency_rating');
+  try {
+    // Find all power supply products and get distinct efficiency ratings
+    const efficiencyRatings = await Product.find({ type: 'power' }).distinct('efficiency_rating');
 
-        // Format the efficiency ratings into the { display, value } structure
-        const formattedEfficiencyRatings = efficiencyRatings.map(rating => ({
-            display: rating.replace(/_/g, ' ').replace('plus', '+'),
-            value: rating,
-        }));
+    // Format the efficiency ratings into the { display, value } structure
+    const formattedEfficiencyRatings = efficiencyRatings.map(rating => ({
+      display: rating.replace(/_/g, ' ').replace('plus', '+'),
+      value: rating,
+    }));
 
-        res.status(200).json(formattedEfficiencyRatings);
-    } catch (error) {
-        console.error('Error fetching power efficiency ratings:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedEfficiencyRatings);
+  } catch (error) {
+    console.error('Error fetching power efficiency ratings:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getStorageCapacities = async (req, res) => {
-    try {
-        // Find all storage products and get distinct storage capacities
-        const storageCapacities = await Product.find({ type: 'storage' }).distinct('storage_capacity');
+  try {
+    // Find all storage products and get distinct storage capacities
+    const storageCapacities = await Product.find({ type: 'storage' }).distinct('storage_capacity');
 
-        // Format the storage capacities into the { display, value } structure
-        const formattedStorageCapacities = storageCapacities.map(capacity => ({
-            display: `${capacity} GB`,
-            value: capacity,
-        }));
+    // Format the storage capacities into the { display, value } structure
+    const formattedStorageCapacities = storageCapacities.map(capacity => ({
+      display: `${capacity} GB`,
+      value: capacity,
+    }));
 
-        res.status(200).json(formattedStorageCapacities);
-    } catch (error) {
-        console.error('Error fetching storage capacities:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedStorageCapacities);
+  } catch (error) {
+    console.error('Error fetching storage capacities:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getStorageTypes = async (req, res) => {
-    try {
-        // Find all storage products and get distinct storage types
-        const storageTypes = await Product.find({ type: 'storage' }).distinct('storage_type');
+  try {
+    // Find all storage products and get distinct storage types
+    const storageTypes = await Product.find({ type: 'storage' }).distinct('storage_type');
 
-        // Format the storage types into the { display, value } structure
-        const formattedStorageTypes = storageTypes.map(type => ({
-            display: type.toUpperCase(),
-            value: type,
-        }));
+    // Format the storage types into the { display, value } structure
+    const formattedStorageTypes = storageTypes.map(type => ({
+      display: type.toUpperCase(),
+      value: type,
+    }));
 
-        res.status(200).json(formattedStorageTypes);
-    } catch (error) {
-        console.error('Error fetching storage types:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedStorageTypes);
+  } catch (error) {
+    console.error('Error fetching storage types:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getMaxGpuLengths = async (req, res) => {
-    try {
-        // Find all casing products and get distinct max GPU lengths
-        const maxGpuLengths = await Product.find({ type: 'casing' }).distinct('max_gpu_length');
+  try {
+    // Find all casing products and get distinct max GPU lengths
+    const maxGpuLengths = await Product.find({ type: 'casing' }).distinct('max_gpu_length');
 
-        // Format the max GPU lengths into the { display, value } structure
-        const formattedMaxGpuLengths = maxGpuLengths.map(length => ({
-            display: `${length} mm`,
-            value: length,
-        }));
+    // Format the max GPU lengths into the { display, value } structure
+    const formattedMaxGpuLengths = maxGpuLengths.map(length => ({
+      display: `${length} mm`,
+      value: length,
+    }));
 
-        res.status(200).json(formattedMaxGpuLengths);
-    } catch (error) {
-        console.error('Error fetching max GPU lengths:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedMaxGpuLengths);
+  } catch (error) {
+    console.error('Error fetching max GPU lengths:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getMonitorDisplaySizes = async (req, res) => {
-    try {
-        // Find all monitor products and get distinct display sizes
-        const displaySizes = await Product.find({ type: 'monitor' }).distinct('display_size');
+  try {
+    // Find all monitor products and get distinct display sizes
+    const displaySizes = await Product.find({ type: 'monitor' }).distinct('display_size');
 
-        // Format the display sizes into the { display, value } structure
-        const formattedDisplaySizes = displaySizes.map(size => ({
-            display: `${size}"`,
-            value: size,
-        }));
+    // Format the display sizes into the { display, value } structure
+    const formattedDisplaySizes = displaySizes.map(size => ({
+      display: `${size}"`,
+      value: size,
+    }));
 
-        res.status(200).json(formattedDisplaySizes);
-    } catch (error) {
-        console.error('Error fetching monitor display sizes:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedDisplaySizes);
+  } catch (error) {
+    console.error('Error fetching monitor display sizes:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getMonitorPanelTypes = async (req, res) => {
-    try {
-        // Find all monitor products and get distinct panel types
-        const panelTypes = await Product.find({ type: 'monitor' }).distinct('panel_type');
+  try {
+    // Find all monitor products and get distinct panel types
+    const panelTypes = await Product.find({ type: 'monitor' }).distinct('panel_type');
 
-        // Format the panel types into the { display, value } structure
-        const formattedPanelTypes = panelTypes.map(type => ({
-            display: type.toUpperCase(),
-            value: type,
-        }));
+    // Format the panel types into the { display, value } structure
+    const formattedPanelTypes = panelTypes.map(type => ({
+      display: type.toUpperCase(),
+      value: type,
+    }));
 
-        res.status(200).json(formattedPanelTypes);
-    } catch (error) {
-        console.error('Error fetching monitor panel types:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedPanelTypes);
+  } catch (error) {
+    console.error('Error fetching monitor panel types:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getMonitorRefreshRates = async (req, res) => {
-    try {
-        // Find all monitor products and get distinct refresh rates
-        const refreshRates = await Product.find({ type: 'monitor' }).distinct('refresh_rate');
+  try {
+    // Find all monitor products and get distinct refresh rates
+    const refreshRates = await Product.find({ type: 'monitor' }).distinct('refresh_rate');
 
-        // Format the refresh rates into the { display, value } structure
-        const formattedRefreshRates = refreshRates.map(rate => ({
-            display: `${rate} Hz`,
-            value: rate,
-        }));
+    // Format the refresh rates into the { display, value } structure
+    const formattedRefreshRates = refreshRates.map(rate => ({
+      display: `${rate} Hz`,
+      value: rate,
+    }));
 
-        res.status(200).json(formattedRefreshRates);
-    } catch (error) {
-        console.error('Error fetching monitor refresh rates:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.status(200).json(formattedRefreshRates);
+  } catch (error) {
+    console.error('Error fetching monitor refresh rates:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const getExpansionComponentTypes = async (req, res) => {
-    try {
-        // Find all expansion_network products and get distinct component types
-        const componentTypes = await Product.find({ type: 'expansion_network' }).distinct('component_type');
+  try {
+    // Find all expansion_network products and get distinct component types
+    const componentTypes = await Product.find({ type: 'expansion_network' }).distinct('component_type');
 
-        // Format the component types into the { display, value } structure
-        const formattedComponentTypes = componentTypes.map(type => ({
-            display: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-            value: type,
-        }));
+    // Format the component types into the { display, value } structure
+    const formattedComponentTypes = componentTypes.map(type => ({
+      display: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      value: type,
+    }));
 
-        res.status(200).json(formattedComponentTypes);
-    } catch (error) {
-        console.error('Error fetching expansion component types:', error);
-        res.status(500).json({ error: error.message });
+    res.status(200).json(formattedComponentTypes);
+  } catch (error) {
+    console.error('Error fetching expansion component types:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getTopProducts = async (req, res) => {
+  try {
+    console.log('getTopProducts called with query:', req.query);
+    const { startDate, endDate, limit = 5 } = req.query;
+
+    // Build date filter for reviews
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
     }
+    console.log('Date filter:', dateFilter);
+
+    // Import Review model dynamically to avoid circular dependency
+    const { default: Review } = await import('../model/ReviewModel.js');
+
+    // Aggregation pipeline to get top products
+    const topProducts = await Review.aggregate([
+      {
+        $match: {
+          type: 'product',
+          rating: { $gt: 3 },
+          ...dateFilter
+        }
+      },
+      {
+        $group: {
+          _id: '$productId',
+          averageRating: { $avg: '$rating' },
+          reviewCount: { $sum: 1 }
+        }
+      },
+      {
+        $match: {
+          averageRating: { $gt: 3 }
+        }
+      },
+      {
+        $addFields: {
+          productObjectId: { $toObjectId: '$_id' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productObjectId',
+          foreignField: '_id',
+          as: 'productDetails'
+        }
+      },
+      {
+        $match: {
+          productDetails: { $ne: [] }
+        }
+      },
+      {
+        $unwind: '$productDetails'
+      },
+      {
+        $addFields: {
+          sales: { $multiply: ['$productDetails.price', '$reviewCount'] }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          productId: '$_id',
+          name: '$productDetails.name',
+          image: {
+            $cond: {
+              if: { $gt: [{ $size: '$productDetails.img_urls' }, 0] },
+              then: { $arrayElemAt: ['$productDetails.img_urls.url', 0] },
+              else: null
+            }
+          },
+          price: '$productDetails.price',
+          sales: 1,
+          rating: { $round: ['$averageRating', 1] },
+          reviewCount: 1
+        }
+      },
+      {
+        $sort: { rating: -1, sales: -1 }
+      },
+      {
+        $limit: parseInt(limit)
+      }
+    ]);
+
+    console.log('Top products found:', topProducts.length);
+
+    res.status(200).json({
+      success: true,
+      data: topProducts,
+      total: topProducts.length
+    });
+  } catch (error) {
+    console.error('Error fetching top products:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 };
