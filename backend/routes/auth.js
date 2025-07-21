@@ -28,6 +28,7 @@ router.get(
 
 // Logout Route
 router.get("/logout", (req, res) => {
+  
   req.logout(() => {
     res.redirect("https://buildify-client-d5yu.vercel.app/");
   });
