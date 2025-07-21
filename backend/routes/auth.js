@@ -28,6 +28,7 @@ router.get(
 
 // Logout Route
 router.get("/logout", (req, res) => {
+  
   req.logout(() => {
     res.redirect("http://localhost:5173/");
   });
