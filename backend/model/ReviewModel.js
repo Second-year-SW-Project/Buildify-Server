@@ -12,11 +12,11 @@ const ReviewSchema = new Schema({
              return this.type === "product";
          }
     },
-    orderID: {
+    orderId: {
         type: String,
         required: true
     },
-    userID: {
+    userId: {
         type: Schema.Types.ObjectId,
         required: true,
         ref: 'User'
