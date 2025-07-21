@@ -13,12 +13,12 @@ router.get("/google", passport.authenticate("google", { scope: ["email", "profil
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: "http://localhost:5173/auth/login", // Redirect if authentication fails
+    failureRedirect: "https://buildify-client-d5yu.vercel.app/auth/login", // Redirect if authentication fails
   }),
   (req, res) => {
     const { token, user } = req.user;
     res.redirect(
-      `http://localhost:5173/?token=${token}&name=${encodeURIComponent(
+      `https://buildify-client-d5yu.vercel.app/?token=${token}&name=${encodeURIComponent(
         user.name
       )}&email=${user.email}`
     );
@@ -29,7 +29,7 @@ router.get(
 // Logout Route
 router.get("/logout", (req, res) => {
   req.logout(() => {
-    res.redirect("http://localhost:5173/");
+    res.redirect("https://buildify-client-d5yu.vercel.app/");
   });
 });
 

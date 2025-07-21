@@ -22,5 +22,5 @@ connectCloudinary();
 // Start the server
 const port = process.env.PORT || 8000;
 app.listen(port, () => {
-  console.log(`Server started at http://localhost:${port}`);
+  console.log(`Server started at https://buildify-server-d5yu.vercel.app/`);
 });
