@@ -465,33 +465,47 @@ export const getAllReviewsAdmin = async (req, res) => {
 
     const enhancedReviews = await Promise.all(
       reviews.map(async (review) => {
-        if (!review.orderId) {
-          return {
-            ...review.toObject(),
-            productName: null,
-            productCategory: null,
-          };
+        const reviewObject = review.toObject();
+
+        if (review.type === "product") {
+          // Handle product reviews
+          if (review.productId) {
+            const product = await Product.findById(review.productId);
+            if (product) {
+              reviewObject.productName = product.name;
+              reviewObject.productImage = product.img_urls?.[0]?.url || null;
+              reviewObject.productCategory = product.type;
+            }
+          }
+
+          // Get the transaction/order details
+          if (review.orderId) {
+            const order = await Transaction.findById(review.orderId);
+            if (order) {
+              reviewObject.orderDetails = {
+                orderId: order._id,
+                status: order.status,
+                createdAt: order.createdAt
+              };
+            }
+          }
+        } else if (review.type === "pc_build") {
+          // Handle PC build reviews
+          if (review.orderId) {
+            const buildOrder = await BuildTransaction.findById(review.orderId);
+            if (buildOrder) {
+              reviewObject.buildName = buildOrder.buildName;
+              reviewObject.buildImage = buildOrder.buildImage;
+              reviewObject.orderDetails = {
+                orderId: buildOrder._id,
+                status: buildOrder.buildStatus,
+                createdAt: buildOrder.createdAt
+              };
+            }
+          }
         }
 
-        const order = await Transaction.findById(review.orderId);
-
-        if (!order)
-          return {
-            ...review.toObject(),
-            productName: null,
-            productCategory: null,
-          };
-
-        const matchedItem = order.items.find(
-          (item) =>
-            item._id && item._id.toString() === review.orderId.toString()
-        );
-
-        return {
-          ...review.toObject(),
-          productName: matchedItem?.name || null,
-          productCategory: matchedItem?.category || null,
-        };
+        return reviewObject;
       })
     );
 
