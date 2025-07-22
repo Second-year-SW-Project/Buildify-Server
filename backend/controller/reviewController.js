@@ -1,65 +1,11 @@
-import Review from '../model/ReviewModel.js';
-import {Transaction} from '../model/TransactionModel.js'; 
-import {BuildTransaction} from '../model/BuildTransactionModel.js';
+import Review from "../model/ReviewModel.js";
+import { Transaction } from "../model/TransactionModel.js";
+import { BuildTransaction } from "../model/BuildTransactionModel.js";
 import Product from "../model/productModel.js";
 import mongoose from "mongoose";
-import User from '../model/userModel.js';
+import User from "../model/userModel.js";
 
-// export const createReview = async (req, res) => {
-//   try {
-//     const { productId, orderId, type, rating, comment } = req.body;
-//     const userId = req.user.id;  
-
-//     console.log("Logged in user id:", userId); // Debug log
-
-//     // Validate ObjectId format
-//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
-//       return res.status(400).json({ message: "Invalid order ID format." });
-//     }
-
-//     // Fetch order
-//     const order = await Transaction.findById(orderId);
-//     if (!order) {
-//       return res.status(404).json({ message: "Order not found." });
-//     }
-
-//     // Check if order belongs to this user
-//     if (!order.user_id || order.user_id.toString() !== userId.toString()) {
-//       return res.status(403).json({ message: "You have not purchased this product." });
-//     }
-
-//     // Check if product is in order items
-//     const hasProduct = order.items.some(item => item._id.toString() === productId.toString());
-//     if (!hasProduct) {
-//       return res.status(403).json({ message: "Product not found in your order." });
-//     }
-
-//     // Check for existing review (for this product, order, and user)
-//     const existingReview = await Review.findOne({ productId, orderId, userId });
-//     if (existingReview) {
-//       return res.status(400).json({ message: "You have already reviewed this product in this order." });
-//     }
-
-//     // Save new review
-//     const review = new Review({
-//       productId,
-//       orderId,
-//       userId,
-//       type,
-//       rating,
-//       comment,
-//     });
-
-//     await review.save();
-//     res.status(201).json(review);
-
-//   } catch (err) {
-//     console.error("Error in creating review:", err);
-//     res.status(500).json({ message: "An error occurred while creating the review." });
-//   }
-// };
-
-// Get reviews for a product
+// Create reviews for a product
 export const createReview = async (req, res) => {
   try {
     const { productId, orderId, type, rating, comment } = req.body;
@@ -75,7 +21,9 @@ export const createReview = async (req, res) => {
     if (type === "product") {
       // Validate product review requirements
       if (!productId) {
-        return res.status(400).json({ message: "productId is required for product reviews." });
+        return res
+          .status(400)
+          .json({ message: "productId is required for product reviews." });
       }
 
       // Fetch product order
@@ -83,18 +31,42 @@ export const createReview = async (req, res) => {
       if (!order) return res.status(404).json({ message: "Order not found." });
 
       if (order.user_id.toString() !== userId.toString()) {
-        return res.status(403).json({ message: "You have not purchased this product." });
+        return res
+          .status(403)
+          .json({ message: "You have not purchased this product." });
       }
 
-      const hasProduct = order.items.some(item => item._id.toString() === productId);
+      const hasProduct = order.items.some(
+        (item) => item._id.toString() === productId
+      );
       if (!hasProduct) {
-        return res.status(403).json({ message: "Product not found in your order." });
+        return res
+          .status(403)
+          .json({ message: "Product not found in your order." });
       }
 
       // Check existing review
-      const existingReview = await Review.findOne({ productId, orderId, userId });
+      const existingReview = await Review.findOne({
+        productId,
+        orderId,
+        userId,
+      });
       if (existingReview) {
-        return res.status(400).json({ message: "You have already reviewed this product in this order." });
+        return res.status(400).json({
+          message: "You have already reviewed this product in this order.",
+        });
+      }
+
+      if (order.status != "Delivered" && order.status != "Successful") {
+        return res
+          .status(403)
+          .json({ message: "You have not received this product yet." });
+      }
+
+      if (order.status == "Canceled" || order.status == "Refunded") {
+        return res
+          .status(403)
+          .json({ message: "You have canceled this order." });
       }
 
       // Create review
@@ -109,20 +81,28 @@ export const createReview = async (req, res) => {
 
       await review.save();
       return res.status(201).json(review);
-
     } else if (type === "pc_build") {
       // Fetch build order
       const buildOrder = await BuildTransaction.findById(orderId);
-      if (!buildOrder) return res.status(404).json({ message: "Build order not found." });
+      if (!buildOrder)
+        return res.status(404).json({ message: "Build order not found." });
 
       if (buildOrder.userId.toString() !== userId.toString()) {
-        return res.status(403).json({ message: "You have not purchased this build." });
+        return res
+          .status(403)
+          .json({ message: "You have not purchased this build." });
       }
 
       // Check existing build review
-      const existingReview = await Review.findOne({ orderId, userId, type: "pc_build" });
+      const existingReview = await Review.findOne({
+        orderId,
+        userId,
+        type: "pc_build",
+      });
       if (existingReview) {
-        return res.status(400).json({ message: "You have already reviewed this build." });
+        return res
+          .status(400)
+          .json({ message: "You have already reviewed this build." });
       }
 
       // Create build review (no productId needed)
@@ -136,45 +116,51 @@ export const createReview = async (req, res) => {
 
       await review.save();
       return res.status(201).json(review);
-
     } else {
       return res.status(400).json({ message: "Invalid review type provided." });
     }
-
   } catch (err) {
     console.error("Error in creating review:", err);
-    res.status(500).json({ message: "An error occurred while creating the review." });
+    res
+      .status(500)
+      .json({ message: "An error occurred while creating the review." });
   }
 };
 
 export const getProductReviews = async (req, res) => {
-    
-    console.log('Received request for product ID:', req.params.productId);
+  console.log("Received request for product ID:", req.params.productId);
 
-    try {
-      const reviews = await Review.find({ productId: req.params.productId }).populate('userId', 'name');
-    
-      console.log('Reviews fetched:', reviews);  // Log the result of the query
-      if (!reviews) {
-        return res.status(404).json({ message: 'No reviews found for this product' });
-      }
-      res.status(200).json(reviews);
-    } catch (error) {
-      console.error('Error fetching reviews:', error);  
-      res.status(500).json({ message: error.message });
+  try {
+    const reviews = await Review.find({
+      productId: req.params.productId,
+    }).populate("userId", "name");
+
+    console.log("Reviews fetched:", reviews); // Log the result of the query
+    if (!reviews) {
+      return res
+        .status(404)
+        .json({ message: "No reviews found for this product" });
     }
-  };
-  
+    res.status(200).json(reviews);
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
-  export const getMyReviews = async (req, res) => {
+export const getMyReviews = async (req, res) => {
   try {
     const userId = req.user.id;
 
     // Fetch product transactions for user
     const transactions = await Transaction.find({ user_id: userId });
 
+    const validProductTransactions = transactions.filter(
+      (tx) => tx.status === "Delivered" || tx.status === "Successful"
+    );
+
     // Build a flat array of purchased items with their order (transaction) id
-    const purchasedProductItems = transactions.flatMap((tx) =>
+    const purchasedProductItems = validProductTransactions.flatMap((tx) =>
       tx.items.map((item) => ({
         type: "product",
         productId: item._id.toString(),
@@ -185,8 +171,12 @@ export const getProductReviews = async (req, res) => {
     // Fetch build transactions for user
     const buildTransactions = await BuildTransaction.find({ userId: userId });
 
+    const validBuildTransactions = buildTransactions.filter(
+      (tx) => tx.status === "Delivered" || tx.status === "Successful"
+    );
+
     // Build a flat array of purchased PC builds
-    const purchasedBuilds = buildTransactions.map((buildTx) => ({
+    const purchasedBuilds = validBuildTransactions.map((buildTx) => ({
       type: "pc_build",
       orderId: buildTx._id.toString(),
       buildName: buildTx.buildName,
@@ -214,7 +204,7 @@ export const getProductReviews = async (req, res) => {
 
       return {
         type: "product",
-        orderId: purchaseInfo?.orderId || null, 
+        orderId: purchaseInfo?.orderId || null,
         productId: product._id,
         name: product.name,
         price: product.price,
@@ -227,7 +217,7 @@ export const getProductReviews = async (req, res) => {
       };
     });
 
-     // Combine: build reviews
+    // Combine: build reviews
     const buildResults = purchasedBuilds.map((build) => {
       const review = reviews.find(
         (r) => r.orderId === build.orderId && r.type === "pc_build"
@@ -248,7 +238,9 @@ export const getProductReviews = async (req, res) => {
     });
 
     // Merge product and build reviews
-    const result = [...productResults, ...buildResults];
+    const result = [...productResults, ...buildResults].sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+    );
 
     res.status(200).json(result);
   } catch (error) {
@@ -301,7 +293,6 @@ export const getProductReviews = async (req, res) => {
 //   }
 // };
 
-
 // export const getMyReviews = async (req, res) => {
 //   try {
 //     const reviews = await Review.aggregate([
@@ -315,7 +306,7 @@ export const getProductReviews = async (req, res) => {
 //       },
 //       {
 //         $lookup: {
-//           from: "products", 
+//           from: "products",
 //           localField: "productObjectId",
 //           foreignField: "_id",
 //           as: "productDetails"
@@ -341,7 +332,6 @@ export const getProductReviews = async (req, res) => {
 //   }
 // };
 
-
 // Update review
 export const updateReview = async (req, res) => {
   try {
@@ -350,7 +340,7 @@ export const updateReview = async (req, res) => {
       userId: req.user.id,
     });
 
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (!review) return res.status(404).json({ message: "Review not found" });
 
     review.comment = req.body.comment || review.comment;
     review.rating = req.body.rating || review.rating;
@@ -371,14 +361,13 @@ export const deleteReview = async (req, res) => {
       userId: req.user.id,
     });
 
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (!review) return res.status(404).json({ message: "Review not found" });
 
-    res.status(200).json({ message: 'Review deleted' });
+    res.status(200).json({ message: "Review deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 //Admin side
 
@@ -426,7 +415,8 @@ export const deleteReview = async (req, res) => {
 // };
 export const getAllReviewsAdmin = async (req, res) => {
   try {
-    const { productId, rating, userId, type, orderId, search, date } = req.query;
+    const { productId, rating, userId, type, orderId, search, date } =
+      req.query;
 
     const filter = {};
 
@@ -451,12 +441,12 @@ export const getAllReviewsAdmin = async (req, res) => {
     if (search) {
       const users = await User.find({
         $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
         ],
-      }).select('_id');
+      }).select("_id");
 
-      const userIds = users.map(user => user._id);
+      const userIds = users.map((user) => user._id);
 
       if (userIds.length === 0) {
         return res.status(200).json([]);
@@ -470,21 +460,31 @@ export const getAllReviewsAdmin = async (req, res) => {
     }
 
     const reviews = await Review.find(filter)
-      .populate('userId', 'name email profilePicture')
+      .populate("userId", "name email profilePicture")
       .sort({ createdAt: -1 });
 
     const enhancedReviews = await Promise.all(
       reviews.map(async (review) => {
         if (!review.orderId) {
-          return { ...review.toObject(), productName: null, productCategory: null };
+          return {
+            ...review.toObject(),
+            productName: null,
+            productCategory: null,
+          };
         }
 
         const order = await Transaction.findById(review.orderId);
 
-        if (!order) return { ...review.toObject(), productName: null, productCategory: null };
+        if (!order)
+          return {
+            ...review.toObject(),
+            productName: null,
+            productCategory: null,
+          };
 
         const matchedItem = order.items.find(
-          item => item._id && item._id.toString() === review.orderId.toString()
+          (item) =>
+            item._id && item._id.toString() === review.orderId.toString()
         );
 
         return {
@@ -497,18 +497,17 @@ export const getAllReviewsAdmin = async (req, res) => {
 
     res.status(200).json(enhancedReviews);
   } catch (error) {
-    console.error('Error fetching all reviews for admin:', error);
+    console.error("Error fetching all reviews for admin:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
 
 // Admin respond to a review
 export const respondToReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
 
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (!review) return res.status(404).json({ message: "Review not found" });
 
     review.adminResponse = req.body.adminResponse || null;
     await review.save();
@@ -524,9 +523,9 @@ export const adminDeleteReview = async (req, res) => {
   try {
     const review = await Review.findByIdAndDelete(req.params.id);
 
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    if (!review) return res.status(404).json({ message: "Review not found" });
 
-    res.status(200).json({ message: 'Review deleted by admin' });
+    res.status(200).json({ message: "Review deleted by admin" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
