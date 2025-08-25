@@ -31,7 +31,20 @@ dotenv.config({ path: "./config.env" });
 app.use(cookieParser());
 app.use(
   cors({
-    origin: 'https://buildify-client-d5yu.vercel.app', // Frontend URL (removed trailing slash)
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'https://buildify-client-d5yu.vercel.app',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:4173',
+        'http://127.0.0.1:4173',
+      ];
+      // Allow non-browser tools (no origin), or any origin in the whitelist
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('CORS not allowed from this origin'));
+    },
     credentials: true,
   })
 );
